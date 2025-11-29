@@ -1,10 +1,11 @@
+// app/auth/callback/page.tsx
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "../../supabase/client";
 
-export default function AuthCallbackPage() {
+export default function CoupleAuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -14,8 +15,10 @@ export default function AuthCallbackPage() {
       const url = new URL(window.location.href);
       const supabase = supabaseBrowser();
 
-      // 1) Figure out where to go after auth
-      const next = url.searchParams.get("next") || "/dashboard/couple";
+      // 1) Determine where to send them after auth
+      const next =
+        url.searchParams.get("next") ||
+        "/dashboard/couple"; // or "/couple/onboarding" if you prefer
 
       // 2) If we already have a session, just go there
       try {
@@ -25,7 +28,7 @@ export default function AuthCallbackPage() {
           return;
         }
       } catch {
-        // ignore and fall through to exchange
+        // ignore, we'll try exchange
       }
 
       // 3) Try to exchange the auth info from URL
@@ -34,7 +37,7 @@ export default function AuthCallbackPage() {
       const hasCode = url.searchParams.get("code");
 
       try {
-        let error = null as unknown;
+        let error: unknown = null;
 
         if (hash) {
           // Magic link / email flow – Supabase puts tokens in the hash fragment
@@ -46,14 +49,14 @@ export default function AuthCallbackPage() {
           error = res.error;
         } else {
           // Nothing to exchange – probably hit directly
-          router.replace("/auth/signin");
+          router.replace("/auth/signin?role=couple");
           return;
         }
 
         if (error) {
           console.error("Supabase exchange error:", error);
           router.replace(
-            "/auth/signin?error=" +
+            "/auth/signin?role=couple&error=" +
               encodeURIComponent(
                 (error as { message?: string })?.message || "Sign-in failed",
               ),
@@ -61,18 +64,20 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // 4) Success – go to funnel destination
+        // 4) Success – go to the intended destination
         router.replace(next);
       } catch (e) {
-        console.error("Auth callback fatal error:", e);
-        router.replace("/auth/signin");
+        console.error("Auth callback fatal error (couple):", e);
+        router.replace("/auth/signin?role=couple");
       }
     })();
   }, [router]);
 
   return (
-    <main className="min-h-[50vh] flex items-center justify-center">
-      <p className="text-sm text-slate-600">Signing you in…</p>
+    <main className="min-h-[60vh] flex items-center justify-center">
+      <p className="text-sm text-brand-charcoal">
+        Signing you in securely…
+      </p>
     </main>
   );
 }

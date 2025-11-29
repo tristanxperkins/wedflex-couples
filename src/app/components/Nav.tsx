@@ -1,151 +1,81 @@
+// app/components/Nav.tsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "../supabase/client";
 
-type ActiveRole = "couple" | "wedflexer" | null;
-
-function cx(...a: (string | false | null | undefined)[]) {
-  return a.filter(Boolean).join(" ");
-}
-
 export default function Nav() {
-  const pathname = usePathname();
-
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
-  const [role, setRole] = useState<ActiveRole>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const sb = supabaseBrowser();
-        const { data: userData } = await sb.auth.getUser();
-
-        if (!userData?.user) {
-          setEmail(null);
-          setRole(null);
-          return;
-        }
-
-        setEmail(userData.user.email ?? null);
-
-        const { data: prof, error: profErr } = await sb
-          .from("profiles")
-          .select("active_role")
-          .eq("id", userData.user.id)
-          .single();
-
-        if (!profErr && prof?.active_role) {
-          setRole(prof.active_role as ActiveRole);
-        } else {
-          setRole(null);
-        }
+        const { data } = await sb.auth.getUser();
+        if (data?.user?.email) setEmail(data.user.email);
       } catch {
-        setEmail(null);
-        setRole(null);
-      } finally {
-        setLoading(false);
+        // ignore
       }
     })();
-  }, [pathname]);
-
-  const isSignedIn = !!email;
-
-  // Decide which dashboard link to show when user is signed in
-  const dashboardHref =
-    role === "wedflexer"
-      ? "/dashboard/wedflexer"
-      : "/dashboard/couple";
+  }, []);
 
   async function handleSignOut() {
-    try {
-      const sb = supabaseBrowser();
-      await sb.auth.signOut();
-    } catch {
-      // ignore error for now
-    } finally {
-      // Hard reload so all client state resets
-      window.location.href = "/";
-    }
+    const sb = supabaseBrowser();
+    await sb.auth.signOut();
+    router.push("/");
+    router.refresh();
   }
 
   return (
-    <nav className="flex flex-col md:flex-row md:items-center md:justify-between text-slate-800 gap-3 md:gap-0">
-      {/* Brand */}
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-2xl font-extrabold text-purple-700">
+    <nav className="w-full flex items-center justify-between py-3">
+      {/* Left: Brand */}
+      <Link href="/" className="flex items-baseline gap-2">
+        <span className="text-xl font-extrabold text-brand-primary">
           WedFlex
-        </Link>
-      </div>
+        </span>
+        <span className="text-[11px] uppercase tracking-[0.2em] text-brand-charcoal/60">
+          For Couples
+        </span>
+      </Link>
 
-      {/* Center links: Home, Mission, and (if signed in) Dashboard */}
-      <div className="flex flex-wrap gap-4 text-sm">
-        <Link
-          href="/"
-          className={cx(
-            "hover:text-purple-700",
-            pathname === "/" && "font-semibold text-purple-700",
-          )}
-        >
-          Home
-        </Link>
-
-        <Link
-          href="/mission"
-          className={cx(
-            "hover:text-purple-700",
-            pathname === "/mission" && "font-semibold text-purple-700",
-          )}
-        >
+      {/* Right: Links */}
+      <div className="flex items-center gap-5 text-sm font-medium text-brand-charcoal">
+        <Link href="/mission" className="hover:text-brand-primary">
           Mission
         </Link>
 
-        {isSignedIn && (
-          <Link
-            href={dashboardHref}
-            className={cx(
-              "hover:text-purple-700",
-              pathname?.startsWith("/dashboard") &&
-                "font-semibold text-purple-700",
-            )}
-          >
-            Dashboard
-          </Link>
-        )}
-      </div>
+        <Link href="/offers/new" className="hover:text-brand-primary">
+          Post an Offer
+        </Link>
 
-      {/* Right side: auth state */}
-      <div className="flex items-center gap-3">
-        {/* Logged out → Sign in */}
-        {!isSignedIn && !loading && (
-          <Link
-            href="/auth/signin"
-            className="text-sm px-3 py-2 rounded-md border hover:bg-purple-50 hover:border-purple-300"
-          >
-            Sign in
-          </Link>
-        )}
-
-        {/* Logged in → email + Sign out */}
-        {isSignedIn && (
-          <div className="flex items-center gap-2">
-            <span
-              className="text-sm text-slate-700 truncate max-w-[180px]"
-              title={email || ""}
+                {email ? (
+          <>
+            <Link
+              href="/dashboard/couple"
+              className="hidden sm:inline hover:text-brand-primary"
             >
+              Dashboard
+            </Link>
+            <span className="hidden sm:inline text-xs text-brand-charcoal/70">
               {email}
             </span>
             <button
-              type="button"
               onClick={handleSignOut}
-              className="text-xs px-2 py-1 rounded-md border bg-white hover:bg-purple-50"
+              className="text-xs rounded-full border border-brand-primary px-3 py-1 text-brand-primary hover:bg-brand-primary hover:text-white transition"
             >
               Sign out
             </button>
-          </div>
+          </>
+        ) : (
+          <Link
+            href="/auth/signin?role=couple&next=/dashboard/couple"
+            className="inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold border border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white transition"
+          >
+            Sign in
+          </Link>
         )}
       </div>
     </nav>
