@@ -47,7 +47,7 @@ export default function Nav() {
           Mission
         </Link>
 
-        <Link href="/offers/new" className="hover:text-brand-primary">
+        <Link href="/post-offer" className="hover:text-brand-primary">
           Post an Offer
         </Link>
 
