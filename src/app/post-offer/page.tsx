@@ -119,8 +119,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
           </h1>
           <p className="text-sm md:text-base text-brand-charcoal max-w-xl">
             Tell WedFlexers what you need help with and how much you&apos;re offering.
-            WedFlexers will apply, and you choose the right fit for your wedding. If you have multiple needs 
-        , just post one now and post the rest later.
+            WedFlexers will apply, and you choose the right fit for your wedding. If you have multiple needs just post one now and post the rest later.
           </p>
         </header>
 
@@ -316,7 +315,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                 <div className="grid gap-4 md:grid-cols-[1.2fr_1fr] items-end">
                   <div>
                     <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      What's your offer? (USD)
+                      What&apos;s your offer? (USD)
                     </label>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-brand-charcoal">$</span>
