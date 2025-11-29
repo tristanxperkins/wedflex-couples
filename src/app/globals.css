@@ -8,8 +8,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-satoshi);
   --font-mono: var(--font-geist-mono);
+  /* 🔮 WedFlex brand colors */
+  --color-brand-charcoal: #403f40;
+  --color-brand-gray: #d3d3d3;
+  --color-brand-primary: #6a0dad;
+  --color-brand-primary-dark: #3a0d6d;
+  --color-brand-primary-light: #8249cc;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,7 +26,6 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    background: var(--background);
+    color: var(--foreground)
 }

@@ -30,4 +30,5 @@ export const CITY_OPTIONS = [
   "Chicago, Illinois",
   "Washington D.C.",
   "New York City, New York",
+  "Los Angeles, California",
 ] as const;
