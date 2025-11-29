@@ -33,10 +33,10 @@ export default function Nav() {
     <nav className="w-full flex items-center justify-between py-3">
       {/* Left: Brand */}
       <Link href="/" className="flex items-baseline gap-2">
-        <span className="text-xl font-extrabold text-brand-primary">
+        <span className="text-2xl font-extrabold text-brand-primary">
           WedFlex
         </span>
-        <span className="text-[11px] uppercase tracking-[0.2em] text-brand-charcoal/60">
+        <span className="text-[12px] uppercase tracking-[0.2em] text-brand-charcoal/60">
           For Couples
         </span>
       </Link>

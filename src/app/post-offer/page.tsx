@@ -161,6 +161,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     placeholder="Example: Need setup + breakdown help for our backyard wedding"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -173,12 +174,14 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
+                      required
                     >
                       <option value="">Select a category…</option>
                       {CATEGORY_OPTIONS.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
+                        
                       ))}
                     </select>
                   </div>
@@ -191,6 +194,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      required
                     >
                       <option value="">Select city…</option>
                       {CITY_OPTIONS.map((c) => (
@@ -212,6 +216,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
                       value={eventDate}
                       onChange={(e) => setEventDate(e.target.value)}
+                      required
                     />
                   </div>
 
@@ -224,6 +229,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
                       value={eventTime}
                       onChange={(e) => setEventTime(e.target.value)}
+                      required
                     />
                   </div>
 
@@ -238,6 +244,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       placeholder="e.g. 120"
                       value={guestCount}
                       onChange={(e) => setGuestCount(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
@@ -265,6 +272,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     placeholder="Example: We need two people to help set up chairs and reset the space after the reception… or We need a designated driver to and from the hotel"
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -278,6 +286,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     placeholder="Link to Pinterest board, Google Drive, etc."
                     value={inspirationLink}
                     onChange={(e) => setInspirationLink(e.target.value)}
+                    
                   />
                 </div>
 <div className="space-y-2">
@@ -326,6 +335,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                         placeholder="e.g. 250"
                         value={offerDollars}
                         onChange={(e) => setOfferDollars(e.target.value)}
+                        required
                       />
                     </div>
                     <p className="text-[11px] mt-1 text-brand-charcoal/70">
@@ -535,7 +545,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
 
         <p className="text-[11px] text-brand-charcoal/60">
           Need help?{" "}
-          <Link href="/mission" className="underline text-brand-primary">
+          <Link href="/post-your-first-offer" className="underline text-brand-primary">
             Learn more about how WedFlex works for couples.
           </Link>
         </p>
