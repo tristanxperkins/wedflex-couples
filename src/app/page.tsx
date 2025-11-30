@@ -20,11 +20,11 @@ export default function WedFlexerHome() {
               </p>
 
               <h1 className="text-4xl md:text-5xl font-extrabold text-brand-primary leading-tight">
-                Stop paying overpriced wedding vendors. WedFlex your Wedding.
+                Stop paying overpriced wedding vendors. 
               </h1>
 
               <p className="text-brand-charcoal text-sm md:text-base max-w-xl">
-                Post offers for the help you need and connect with talented locals instead 
+                WedFlex is where you can post offers for the help you need and connect with talented locals instead 
                 of traditional overpriced wedding vendors.  </p>
             </div>
 
@@ -34,7 +34,7 @@ export default function WedFlexerHome() {
                 href="/post-your-first-offer?step=1"
                 className="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold bg-brand-primary text-white shadow-sm hover:bg-brand-primary-dark transition"
               >
-                Post your First Offer
+                WedFlex My Wedding
               </Link>
 
               <Link

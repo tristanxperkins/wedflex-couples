@@ -29,7 +29,7 @@ export default function NewOfferPage() {
   const [details, setDetails] = useState("");
   const [inspirationLink, setInspirationLink] = useState("");
   const [inspirationImages, setInspirationImages] = useState<string[]>([]);
-  const [offerDollars, setOfferDollars] = useState<string>("");
+  const [offer_cents, setOffer_Cents] = useState<string>("");
 const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   function goNext() {
@@ -61,16 +61,21 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
         return;
       }
 
-      // Build service_date (ISO) from date + time if provided
-      let serviceDate: string | null = null;
-      if (eventDate) {
-        const iso = eventTime
-          ? new Date(`${eventDate}T${eventTime}:00`)
-          : new Date(`${eventDate}T12:00:00`);
-        serviceDate = iso.toISOString();
-      }
+      // Build service_date (DATE) and event_at (TIMESTAMP) correctly
+let serviceDate: string | null = null;
+let eventAt: string | null = null;
 
-      const dollars = Number(offerDollars.replace(/[^0-9.]/g, ""));
+if (eventDate) {
+  serviceDate = eventDate; // <-- EXACT yyyy-mm-dd
+
+  if (eventTime) {
+    // Save timestamp correctly for the event
+    eventAt = new Date(`${eventDate}T${eventTime}:00`).toISOString();
+  }
+}
+
+
+      const dollars = Number(offer_cents.replace(/[^0-9.]/g, ""));
       const offerCents = Number.isFinite(dollars)
         ? Math.round(dollars * 100)
         : null;
@@ -80,10 +85,10 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
       const { data, error } = await sb
         .from("service_requests")
         .insert({
-          title,
+          title: title.trim(),
           category: category || null,
           location: city || null,
-          service_date: serviceDate,
+          service_date: eventDate,
           offer_cents: offerCents,
           status: "open",
           details: details || null,
@@ -91,6 +96,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
           inspiration_images: inspirationImages.length ? inspirationImages : null,
           guest_count: guestCountNum,
           couple_id: me.user.id,
+          accept_terms: acceptedTerms,
         })
         .select("id")
         .single();
@@ -159,9 +165,10 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     type="text"
                     className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/60"
                     placeholder="Example: Need setup + breakdown help for our backyard wedding"
+                    required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    required
+                   
                   />
                 </div>
 
@@ -173,8 +180,9 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     <select
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
                       required
+                      onChange={(e) => setCategory(e.target.value)}
+                     
                     >
                       <option value="">Select a category…</option>
                       {CATEGORY_OPTIONS.map((c) => (
@@ -193,8 +201,9 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                     <select
                       className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
                       required
+                      onChange={(e) => setCity(e.target.value)}
+                      
                     >
                       <option value="">Select city…</option>
                       {CITY_OPTIONS.map((c) => (
@@ -333,8 +342,8 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                         inputMode="decimal"
                         className="flex-1 border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
                         placeholder="e.g. 250"
-                        value={offerDollars}
-                        onChange={(e) => setOfferDollars(e.target.value)}
+                        value={offer_cents}
+                        onChange={(e) => setOffer_Cents(e.target.value)}
                         required
                       />
                     </div>
@@ -432,7 +441,7 @@ const [acceptedTerms, setAcceptedTerms] = useState(false);
                       Offer amount
                     </p>
                     <p className="text-brand-charcoal">
-                      {offerDollars ? `$${offerDollars}` : "Not set"}
+                      {offer_cents ? `$${offer_cents}` : "Not set"}
                     </p>
                   </div>
                   <div>

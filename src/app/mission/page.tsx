@@ -116,7 +116,8 @@ export default function MissionPage() {
             src="/images/WedFlex-and-a-couple.png"
             alt="Community of WedFlexers supporting a wedding"
             fill
-            className="object-cover object-top"
+            className="object-cover"
+            style={{objectPosition:"50 50%"}}//xy
           />
         </div>
         <p className="mt-3 text-center text-sm text-brand-charcoal">
