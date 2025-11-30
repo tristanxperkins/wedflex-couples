@@ -33,9 +33,41 @@ export default function NewOfferPage() {
 const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   function goNext() {
-    setErr(null);
-    setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
+  setErr(null);
+
+  if (step === 1) {
+    if (!title.trim()) {
+      setErr("Please add a title for your offer.");
+      return;
+    }
+    if (!category) {
+      setErr("Please select a service category.");
+      return;
+    }
+    if (!city) {
+      setErr("Please select a city / location.");
+      return;
+    }
+    if (!eventDate) {
+      setErr("Please choose the date you need this service.");
+      return;
+    }
+      }
+
+  if (step === 2) {
+    if (!details.trim()) {
+      setErr("Please describe what you need help with.");
+      return;
+    }
+    if (!offer_cents.trim()) {
+      setErr("Please enter your offer amount in USD.");
+      return;
+    }
   }
+
+  setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
+}
+
 
   function goBack() {
     setErr(null);

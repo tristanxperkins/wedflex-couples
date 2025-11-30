@@ -33,28 +33,22 @@ export default function DashboardSidebar({ role }: { role: Role }) {
     { href: "/dashboard/couple/calendar", label: "Calendar" },
     { href: "/dashboard/couple/budget", label: "Budget" },
     { href: "/dashboard/couple/messages", label: "Messages" },
+    { href: "/post-offer", label: "Post a New Offer"},
   ];
 
-  const wedflexerItems = [
-    { href: "/dashboard/wedflexer", label: "Overview" },
-    { href: "/dashboard/wedflexer/profile", label: "Profile" },
-    { href: "/dashboard/wedflexer/calendar", label: "Calendar" },
-    { href: "/dashboard/wedflexer/earnings", label: "Earnings" },
-    { href: "/dashboard/wedflexer/messages", label: "Messages" },
-  ];
+  
 
-  const items = role === "couple" ? coupleItems : wedflexerItems;
 
   return (
     <aside className="border rounded-xl p-4 h-max">
       <nav className="flex flex-col gap-2">
-        {items.map((i) => (
+        {coupleItems.map((item) => (
           <Link
-            key={i.href}
-            href={i.href}
+            key={item.href}
+            href={item.href}
             className="px-3 py-2 rounded hover:bg-purple-50 text-sm"
           >
-            {i.label}
+            {item.label}
           </Link>
         ))}
       </nav>

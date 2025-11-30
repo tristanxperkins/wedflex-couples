@@ -55,11 +55,11 @@ export default function CoupleSignInPage() {
           {/* LEFT: Sign-in card */}
           <section className="bg-white rounded-3xl shadow-sm border border-brand-primary/10 px-6 py-7 md:px-8 md:py-9">
             <p className="text-xs font-semibold tracking-[0.25em] text-brand-primary uppercase mb-2">
-              Sign in to your couple account
+              Couple account sign in
             </p>
 
             <h1 className="text-3xl md:text-4xl font-extrabold text-brand-primary mb-2">
-              Let&apos;s grab your wedding.
+              Sign in to WedFlex your wedding.
             </h1>
 
             <p className="text-sm md:text-base text-brand-charcoal/80 mb-6 max-w-lg">

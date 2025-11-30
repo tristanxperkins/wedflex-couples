@@ -113,6 +113,8 @@ export default function WedflexerProfilePage() {
     <RequireAuth>
       <main className="max-w-6xl mx-auto p-6 grid gap-6 lg:grid-cols-[240px_1fr]">
         <DashboardSidebar role="wedflexer" />
+          
+        
         <section className="space-y-6">
           <h1 className="text-2xl font-semibold">Profile</h1>
           {err && <p className="text-red-600">Error: {toErrorString(err)}</p>}

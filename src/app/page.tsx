@@ -15,16 +15,13 @@ export default function WedFlexerHome() {
           {/* LEFT */}
           <div className="space-y-7">
             <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-[0.25em] text-brand-primary uppercase">
-                WedFlex for Couples
-              </p>
-
+              
               <h1 className="text-4xl md:text-5xl font-extrabold text-brand-primary leading-tight">
                 Stop paying overpriced wedding vendors. 
               </h1>
 
               <p className="text-brand-charcoal text-sm md:text-base max-w-xl">
-                WedFlex is where you can post offers for the help you need and connect with talented locals instead 
+                WedFlex is where you can post offers for wedding services and connect with talented locals instead 
                 of traditional overpriced wedding vendors.  </p>
             </div>
 
@@ -74,7 +71,7 @@ export default function WedFlexerHome() {
           {/* RIGHT IMAGE */}
           <div className="relative h-[300px] md:h-[380px] lg:h-[420px] rounded-3xl overflow-hidden shadow-xl">
             <Image
-              src="/images/WedFlex-in-action.png"
+              src="/images/WedFlexers-helping-a-couple.png"
               alt="WedFlexers working"
               fill
               className="object-cover object-center"
