@@ -75,7 +75,7 @@ export default function WedFlexerHome() {
               alt="WedFlexers working"
               fill
               className="object-cover object-center"
-              style={{objectPosition:"50% 50%"}}//xy
+              style={{objectPosition:"40% 50%"}}//xy
               priority
             />
           </div>

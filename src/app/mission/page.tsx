@@ -113,11 +113,11 @@ export default function MissionPage() {
       <section className="max-w-5xl mx-auto px-4 pb-12 md:pb-16">
         <div className="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-lg">
           <Image
-            src="/images/WedFlex-and-a-couple.png"
+            src="/images/WeddingCelebration.png"
             alt="Community of WedFlexers supporting a wedding"
             fill
             className="object-cover"
-            style={{objectPosition:"50 50%"}}//xy
+            style={{objectPosition:"50 40%"}}//xy
           />
         </div>
         <p className="mt-3 text-center text-sm text-brand-charcoal">
