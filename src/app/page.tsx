@@ -75,7 +75,7 @@ export default function WedFlexerHome() {
               alt="WedFlexers working"
               fill
               className="object-cover object-center"
-              style={{objectPosition:"70% 50%"}}//xy
+              style={{objectPosition:"50% 50%"}}//xy
               priority
             />
           </div>
@@ -126,7 +126,8 @@ export default function WedFlexerHome() {
     </h2>
 
     <p className="text-sm text-brand-charcoal max-w-md">
-      Stop paying for overpriced wedding services from traditional vendors.
+      We believe that a wedding should not be a financial burden to mark the beginning of marriage. 
+      WedFlex is for couples who just want to get married without paying for overpriced wedding services from traditional vendors.
     </p>
 
     <div className="grid gap-4 sm:grid-cols-3">
@@ -135,7 +136,7 @@ export default function WedFlexerHome() {
           1. Post an Offer
         </p>
         <p className="text-sm">
-          Tell us what you need, set your offer, and share your wedding details. It takes just 2 minutes.
+          Offers let you name your price for wedding services and connect with WedFlexers who can help.
         </p>
       </div>
 
@@ -153,7 +154,7 @@ export default function WedFlexerHome() {
           3. Trusted Delivery
         </p>
         <p className="text-sm text-brand-charcoal">
-          You are protected by WedFlex Escrow. WedFlexers only get paid when the job is done.
+          Book & Relax! You are protected by WedFlex Escrow - WedFlexers only get paid when the job is done.
         </p>
       </div>
     </div>
@@ -196,7 +197,7 @@ export default function WedFlexerHome() {
               href="https://wedflex-wedflexers.vercel.app"
               className="inline-flex items-center rounded-lg px-5 py-2.5 text-sm font-semibold border border-brand-primary text-brand-primary hover:bg-white"
             >
-              Become a WedFlexer
+              Earn Money as a WedFlexer
             </Link>
           </div>
         </div>

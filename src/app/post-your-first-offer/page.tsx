@@ -256,32 +256,38 @@ const [authError, setAuthError] = useState<string | null>(null);
         <section className="grid gap-10 lg:grid-cols-[1.2fr_1fr] items-center">
           <div className="space-y-4">
             <p className="text-xs font-semibold tracking-[0.25em] text-brand-primary uppercase">
-              It&apos;s time!
+              It&apos;s time to WedFlex Your Wedding!
             </p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-brand-primary">
-              Let&apos;s WedFlex your wedding & Post your first offer.
+              Let&apos;s post your first offer
             </h1>
             <p className="text-sm md:text-base text-brand-charcoal max-w-xl">
-              We&apos;ll create a quick profile and then walk you through posting an offer that will 
-              connect you with local WedFlexers who are willing to help at the offer you set.
-              You are in control of your vision, your budget, and who you bring into your day.
-            </p>
+              Offers connect you with WedFlexers who can help with your wedding needs.
+              Your offer will detail the wedding services 
+              you need and the pay you are offering.            
+                        </p>
 
             <div className="grid gap-3 text-sm">
               <div className="flex gap-3 items-start">
-                <span className="text-lg">1️⃣</span>
+                <span className="text-lg">🟪</span>
                 <p>
-                  <strong>Post an offer</strong> for any wedding service you are looking for. Tell us the details and your 
+                  <strong>First</strong>, we'll create a quick profile 
                 </p>
               </div>
               <div className="flex gap-3 items-start">
-                <span className="text-lg">2️⃣</span>
+                <span className="text-lg">🟪</span>
                 <p>
-                  <strong>Pick your WedFlexer</strong> based on their application, skills, and availability. Chat with WedFlexers to confirm details.
+                  <strong>Next</strong>, you'll post an offer for any wedding service (bridal bouquet, a dj, a day-of coordinator, etc.)
                 </p>
               </div>
               <div className="flex gap-3 items-start">
-                <span className="text-lg">3️⃣</span>
+                <span className="text-lg">🟪</span>
+                <p>
+                  <strong>Get Applications</strong> from WedFlexers who want to help with your offer. Review WedFlexers and chat to confirm details from your Dashboard.
+                                  </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg">🟪</span>
                 <p>
                   <strong>Book, pay, and relax.</strong> WedFlex holds payment to WedFlexers until
                   the service is delivered.
