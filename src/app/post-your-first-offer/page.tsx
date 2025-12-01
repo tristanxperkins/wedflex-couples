@@ -298,8 +298,8 @@ const [authError, setAuthError] = useState<string | null>(null);
 
           <div className="relative h-[260px] md:h-[320px] lg:h-[360px] rounded-3xl overflow-hidden shadow-xl">
             <Image
-              src="/images/Wedding-Coordinator.png"
-              alt="WedFlexer working"
+              src="/images/bouquet.jpg"
+              alt="WedFlexer made bouquet"
               fill
               className="object-cover object-center"
             />
