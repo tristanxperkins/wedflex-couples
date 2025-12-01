@@ -21,12 +21,14 @@ export default function PostYourFirstOfferPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAuthed, setIsAuthed] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  
 
   // ---- EMBEDDED SIGN-IN STATE ----
-  const [authEmail, setAuthEmail] = useState("");
-  const [sendingLink, setSendingLink] = useState(false);
-  const [linkSent, setLinkSent] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+const [authEmail, setAuthEmail] = useState("");
+const [authSending, setAuthSending] = useState(false);
+const [authSent, setAuthSent] = useState(false);
+const [authError, setAuthError] = useState<string | null>(null);
+
 
   // ---- OFFER FORM STEP + STATE ----
   const [step, setStep] = useState<Step>(1);
@@ -68,32 +70,37 @@ export default function PostYourFirstOfferPage() {
   // EMBEDDED MAGIC LINK SIGN-IN (COUPLES)
   // ------------------------------------------------------------
   async function sendMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthError(null);
-    setLinkSent(false);
+  e.preventDefault();
+  setAuthSending(true);
+  setAuthError(null);
 
-    try {
-      setSendingLink(true);
-      const sb = supabaseBrowser();
+  try {
+    const sb = supabaseBrowser();
+    if (typeof window === "undefined") throw new Error("Window not available");
 
-      const redirectBase = `${window.location.origin}/auth/callback`;
-      const next = "/post-your-first-offer";
+    // We always want to come back HERE after clicking the magic link
+    const nextPath = "/post-your-first-offer";
 
-      const { error } = await sb.auth.signInWithOtp({
-        email: authEmail,
-        options: {
-          emailRedirectTo: `${redirectBase}?next=${encodeURIComponent(next)}`,
-        },
-      });
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("role", "couple");
+    callbackUrl.searchParams.set("next", nextPath);
 
-      if (error) throw error;
-      setLinkSent(true);
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSendingLink(false);
-    }
+    const { error } = await sb.auth.signInWithOtp({
+      email: authEmail,
+      options: {
+        emailRedirectTo: callbackUrl.toString(),
+      },
+    });
+
+    if (error) throw error;
+    setAuthSent(true);
+  } catch (err) {
+    setAuthError(err instanceof Error ? err.message : String(err));
+  } finally {
+    setAuthSending(false);
   }
+}
+
 
   async function refreshAuth() {
     setCheckingAuth(true);
@@ -350,7 +357,7 @@ export default function PostYourFirstOfferPage() {
               </>
             ) : (
               <>
-                {linkSent ? (
+                {authSent ? (
                   <p className="text-sm text-brand-charcoal">
                     Magic link sent to{" "}
                     <span className="font-semibold">{authEmail}</span>. Check your
@@ -373,14 +380,19 @@ export default function PostYourFirstOfferPage() {
                     </div>
                     <button
                       type="submit"
-                      disabled={sendingLink || !authEmail}
+                      disabled={authSending || !authEmail}
                       className="w-full inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
                     >
-                      {sendingLink ? "Sending link…" : "Send magic link"}
+                      {authSending ? "Sending link…" : "Send magic link"}
                     </button>
                     {authError && (
                       <p className="text-xs text-red-600">Error: {authError}</p>
                     )}
+                    {authSent && (
+    <p className="text-xs text-brand-charcoal/70 mt-1">
+      One-time sign in link sent to <strong>{authEmail}</strong>. Check your email to continue.
+    </p>
+  )}
                   </form>
                 )}
 
@@ -801,9 +813,9 @@ export default function PostYourFirstOfferPage() {
               Step 3: Complete your couple profile
             </h2>
             <p className="text-sm text-brand-charcoal max-w-xl">
-              Congratulations! You just posted your first offer to WedFlex your wedding!
+              Congratulations! You just posted your first offer on WedFlex!
               Now head to your couple dashboard and complete your profile to tell
-              WedFlexers more about your story and start tracking your budget. 
+              WedFlexers more about your story, start reviewing applications, and tracking your budget. 
             </p>
           </div>
 
