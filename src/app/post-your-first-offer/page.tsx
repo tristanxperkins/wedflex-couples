@@ -271,13 +271,13 @@ const [authError, setAuthError] = useState<string | null>(null);
               <div className="flex gap-3 items-start">
                 <span className="text-lg">🟪</span>
                 <p>
-                  <strong>First</strong>, we'll create a quick profile 
+                  <strong>First</strong>, we&apos;ll create a quick profile 
                 </p>
               </div>
               <div className="flex gap-3 items-start">
                 <span className="text-lg">🟪</span>
                 <p>
-                  <strong>Next</strong>, you'll post an offer for any wedding service (bridal bouquet, a dj, a day-of coordinator, etc.)
+                  <strong>Next</strong>, you&apos;ll post an offer for any wedding service (bridal bouquet, a dj, a day-of coordinator, etc.)
                 </p>
               </div>
               <div className="flex gap-3 items-start">
