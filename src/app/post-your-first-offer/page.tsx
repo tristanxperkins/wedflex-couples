@@ -302,7 +302,8 @@ const [authError, setAuthError] = useState<string | null>(null);
               alt="WedFlexer made bouquet"
               fill
               className="object-cover object-center"
-              style={{objectPosition:"50% 35%"}}//xy
+              style={{objectPosition:"50% 25%"}}//xy
+              priority
             />
           </div>
         </section>
