@@ -50,19 +50,19 @@ export default function WedFlexerHome() {
 
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 rounded-full bg-brand-primary/10 text-[12px] flex items-center gap-1.5">
-                  📸 <span>Photography</span>
+                  📸 <span>Taking Pictures & Video</span>
                 </span>
 
                 <span className="px-3 py-1 rounded-full bg-brand-primary/10 text-[12px] flex items-center gap-1.5">
-                  🍰 <span>Cakes & desserts</span>
+                  🍰 <span>Cooking & Baking</span>
                 </span>
 
                 <span className="px-3 py-1 rounded-full bg-brand-primary/10 text-[12px] flex items-center gap-1.5">
-                  🎤 <span>MCs & DJs</span>
+                  🎤 <span>Public Speaking & Playing Music</span>
                 </span>
 
                 <span className="px-3 py-1 rounded-full bg-brand-primary/10 text-[12px] flex items-center gap-1.5">
-                  💐 <span>Decor & florals</span>
+                  💐 <span>Making Decor & florals</span>
                 </span>
               </div>
             </div>

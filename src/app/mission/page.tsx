@@ -49,8 +49,8 @@ export default function MissionPage() {
         {/* Right: image card */}
         <div className="relative h-64 md:h-80 lg:h-96 rounded-3xl overflow-hidden shadow-lg">
           <Image
-            src="/images/Weddings-are-a-ripoff.png"
-            alt="Influencers are sick of it"
+            src="/images/Radical-concept.png"
+            alt="Radical concept"
             fill
             className="object-cover object-top"
             priority
@@ -113,8 +113,8 @@ export default function MissionPage() {
       <section className="max-w-5xl mx-auto px-4 pb-12 md:pb-16">
         <div className="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-lg">
           <Image
-            src="/images/Radical-concept.png"
-            alt="Radical Concept"
+            src="/images/Set Up Tear Down Crew (3).png"
+            alt="Real Wedding Celebration"
             fill
             className="object-cover"
             style={{objectPosition:"50 50%"}}//xy
