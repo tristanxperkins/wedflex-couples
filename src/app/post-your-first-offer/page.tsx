@@ -83,7 +83,7 @@ const [authError, setAuthError] = useState<string | null>(null);
 
     const callbackUrl = new URL("/auth/callback", window.location.origin);
     callbackUrl.searchParams.set("role", "couple");
-    callbackUrl.searchParams.set("next", nextPath);
+    callbackUrl.searchParams.set("next", "/post-your-first-offer");
 
     const { error } = await sb.auth.signInWithOtp({
       email: authEmail,
@@ -391,7 +391,7 @@ const [authError, setAuthError] = useState<string | null>(null);
                       disabled={authSending || !authEmail}
                       className="w-full inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
                     >
-                      {authSending ? "Sending link…" : "Send magic link"}
+                      {authSending ? "Sending link…" : "Send sign-in link"}
                     </button>
                     {authError && (
                       <p className="text-xs text-red-600">Error: {authError}</p>
