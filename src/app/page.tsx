@@ -71,8 +71,8 @@ export default function WedFlexerHome() {
           {/* RIGHT IMAGE */}
           <div className="relative h-[300px] md:h-[380px] lg:h-[420px] rounded-3xl overflow-hidden shadow-xl">
             <Image
-              src="/images/WedFlexers-helping-a-couple.png"
-              alt="WedFlexers working"
+              src="/images/Wedding Ceremony.png"
+              alt="WedFlex Complete Wedding"
               fill
               className="object-cover object-center"
               style={{objectPosition:"40% 50%"}}//xy
