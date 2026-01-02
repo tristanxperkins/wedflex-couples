@@ -76,23 +76,31 @@ const [authError, setAuthError] = useState<string | null>(null);
 
   try {
     const sb = supabaseBrowser();
-    if (typeof window === "undefined") throw new Error("Window not available");
+if (typeof window === "undefined") throw new Error("Window not available");
 
-    // We always want to come back HERE after clicking the magic link
-    const nextPath = "/post-your-first-offer";
+// Always come back HERE after clicking the magic link
+const nextPath = "/post-your-first-offer";
 
-    const callbackUrl = new URL("/auth/callback", window.location.origin);
-    callbackUrl.searchParams.set("role", "couple");
-    callbackUrl.searchParams.set("next", "/post-your-first-offer");
+// Prefer a fixed public site URL (prod) to avoid preview-origin problems.
+// Fallback to window.location.origin for local/dev.
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_APP_ORIGIN ||
+  window.location.origin;
 
-    const { error } = await sb.auth.signInWithOtp({
-      email: authEmail,
-      options: {
-        emailRedirectTo: callbackUrl.toString(),
-      },
-    });
+// Build callback URL specifically for the COUPLES app
+const callbackUrl = new URL("/auth/callback", baseUrl);
+callbackUrl.searchParams.set("role", "couple");
+callbackUrl.searchParams.set("next", nextPath);
 
-    if (error) throw error;
+const { error } = await sb.auth.signInWithOtp({
+  email: authEmail,
+  options: {
+    emailRedirectTo: callbackUrl.toString(),
+  },
+});
+
+if (error) throw error;
     setAuthSent(true);
   } catch (err) {
     setAuthError(err instanceof Error ? err.message : String(err));

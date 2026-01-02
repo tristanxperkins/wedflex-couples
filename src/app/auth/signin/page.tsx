@@ -9,6 +9,7 @@ export default function CoupleSignInPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPath, setNextPath] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
 
   // Read ?next= from URL so we can send it through the magic-link callback
   useEffect(() => {
@@ -25,21 +26,31 @@ export default function CoupleSignInPage() {
 
     try {
       const sb = supabaseBrowser();
-      if (typeof window === "undefined") throw new Error("Window not available");
+if (typeof window === "undefined") throw new Error("Window not available");
 
-      // Build callback URL specifically for the COUPLES app
-      const callbackUrl = new URL("/auth/callback", window.location.origin);
-      callbackUrl.searchParams.set("role", "couple");
-      if (nextPath) callbackUrl.searchParams.set("next", nextPath);
+// Always come back HERE after clicking the magic link
+const nextPath = "/post-your-first-offer";
 
-      const { error } = await sb.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: callbackUrl.toString(),
-        },
-      });
+// Prefer a fixed public site URL (prod) to avoid preview-origin problems.
+// Fallback to window.location.origin for local/dev.
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_APP_ORIGIN ||
+  window.location.origin;
 
-      if (error) throw error;
+// Build callback URL specifically for the COUPLES app
+const callbackUrl = new URL("/auth/callback", baseUrl);
+callbackUrl.searchParams.set("role", "couple");
+callbackUrl.searchParams.set("next", nextPath);
+
+const { error } = await sb.auth.signInWithOtp({
+  email: authEmail,
+  options: {
+    emailRedirectTo: callbackUrl.toString(),
+  },
+});
+
+if (error) throw error;
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
