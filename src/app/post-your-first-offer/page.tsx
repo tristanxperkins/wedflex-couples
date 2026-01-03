@@ -1,114 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+
 import { supabaseBrowser } from "../supabase/client";
 import UploadInput from "../components/UploadInput";
 import { CATEGORY_OPTIONS, CITY_OPTIONS } from "../lib/constants";
-
-type Step = 1 | 2 | 3;
 
 function cx(...a: (string | false | null | undefined)[]) {
   return a.filter(Boolean).join(" ");
 }
 
-export default function PostYourFirstOfferPage() {
+function isValidEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
+export default function PostFirstOfferPage() {
   const router = useRouter();
 
-  // ---- AUTH STATE ----
+  // -------------------------
+  // STEP CONTROL
+  // -------------------------
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  // -------------------------
+  // AUTH (STEP 1)
+  // -------------------------
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAuthed, setIsAuthed] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  
 
-  // ---- EMBEDDED SIGN-IN STATE ----
-const [authEmail, setAuthEmail] = useState("");
-const [authSending, setAuthSending] = useState(false);
-const [authSent, setAuthSent] = useState(false);
-const [authError, setAuthError] = useState<string | null>(null);
-
-
-  // ---- OFFER FORM STEP + STATE ----
-  const [step, setStep] = useState<Step>(1);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  // Step 1 + 2 form fields
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [city, setCity] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [eventTime, setEventTime] = useState("");
-  const [guestCount, setGuestCount] = useState<string>("");
-
-  const [details, setDetails] = useState("");
-  const [inspirationLink, setInspirationLink] = useState("");
-  const [inspirationImages, setInspirationImages] = useState<string[]>([]);
-  const [offerAmount, setOfferAmount] = useState<string>("");
-
-  // Step 3 – terms
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-
-  // ------------------------------------------------------------
-  // AUTH CHECK ON LOAD
-  // ------------------------------------------------------------
-  useEffect(() => {
-    (async () => {
-      const sb = supabaseBrowser();
-      const { data } = await sb.auth.getUser();
-      const authed = !!data?.user;
-      setIsAuthed(authed);
-      setUserEmail(data?.user?.email ?? null);
-      setCheckingAuth(false);
-    })();
-  }, []);
-
-  // ------------------------------------------------------------
-  // EMBEDDED MAGIC LINK SIGN-IN (COUPLES)
-  // ------------------------------------------------------------
-  async function sendMagicLink(e: React.FormEvent) {
-  e.preventDefault();
-  setAuthSending(true);
-  setAuthError(null);
-
-  try {
-    const sb = supabaseBrowser();
-if (typeof window === "undefined") throw new Error("Window not available");
-
-// Always come back HERE after clicking the magic link
-const nextPath = "/post-your-first-offer";
-
-// Prefer a fixed public site URL (prod) to avoid preview-origin problems.
-// Fallback to window.location.origin for local/dev.
-const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.NEXT_PUBLIC_APP_ORIGIN ||
-  window.location.origin;
-
-// Build callback URL specifically for the COUPLES app
-const callbackUrl = new URL("/auth/callback", baseUrl);
-callbackUrl.searchParams.set("role", "couple");
-callbackUrl.searchParams.set("next", nextPath);
-
-const { error } = await sb.auth.signInWithOtp({
-  email: authEmail,
-  options: {
-    emailRedirectTo: callbackUrl.toString(),
-  },
-});
-
-if (error) throw error;
-    setAuthSent(true);
-  } catch (err) {
-    setAuthError(err instanceof Error ? err.message : String(err));
-  } finally {
-    setAuthSending(false);
-  }
-}
-
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signup" | "signin">("signup");
 
   async function refreshAuth() {
     setCheckingAuth(true);
@@ -120,267 +49,325 @@ if (error) throw error;
     setCheckingAuth(false);
   }
 
-  // ------------------------------------------------------------
-  // OFFER FORM STEP HANDLERS
-  // ------------------------------------------------------------
-  function goNext() {
+  useEffect(() => {
+    void refreshAuth();
+  }, []);
+
+  async function handleAuthSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setErr(null);
+    setNote(null);
+    setBusy(true);
 
-    if (!isAuthed) {
-      setErr("Please sign in or create your WedFlex account in Section 2 first.");
-      return;
-    }
-
-    if (step === 1) {
-      if (!title.trim()) {
-        setErr("Please add a title for your offer.");
-        return;
-      }
-      if (!category) {
-        setErr("Please select a service category.");
-        return;
-      }
-      if (!city) {
-        setErr("Please select a city / location.");
-        return;
-      }
-      if (!eventDate) {
-        setErr("Please choose the date you need this service.");
-        return;
-      }
-      if (!eventTime) {
-        setErr("Please enter the start time for the service.");
-        return;
-      }
-      if (!guestCount || Number(guestCount) <= 0) {
-        setErr("Please enter your approximate guest count.");
-        return;
-      }
-      setStep(2);
-      return;
-    }
-
-    if (step === 2) {
-      if (!details.trim()) {
-        setErr("Please describe what you need help with.");
-        return;
-      }
-      if (!offerAmount.trim()) {
-        setErr("Please enter your offer amount in USD.");
-        return;
-      }
-      setStep(3);
-      return;
-    }
-
-    if (step === 3) {
-      if (!acceptedTerms) {
-        setErr("Please agree to the terms before posting your offer.");
-        return;
-      }
-      void handleSubmit();
-    }
-  }
-
-  function goBack() {
-    setErr(null);
-    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
-  }
-
-  // ------------------------------------------------------------
-  // SUBMIT OFFER → service_requests
-  // ------------------------------------------------------------
-  async function handleSubmit() {
     try {
-      setLoading(true);
-      setErr(null);
+      const sb = supabaseBrowser();
+      const email = authEmail.trim().toLowerCase();
+      const password = authPassword;
 
+      if (!isValidEmail(email)) throw new Error("Please enter a valid email.");
+      if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+
+      if (authMode === "signup") {
+        const { error, data } = await sb.auth.signUp({
+          email,
+          password,
+          options: { data: { role: "couple" } },
+        });
+        if (error) throw error;
+
+        // If email confirmations are ON, session may be null until confirmed.
+        if (!data?.session) {
+          setNote(
+            "Account created. If email confirmation is enabled, check your inbox to confirm, then come back and sign in."
+          );
+          return;
+        }
+
+        await refreshAuth();
+        setNote("Account created — you’re signed in. Continue to Step 2.");
+        setStep(2);
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        await refreshAuth();
+        setNote("Signed in. Continue to Step 2.");
+        setStep(2);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function signOut() {
+    const sb = supabaseBrowser();
+    await sb.auth.signOut();
+    setIsAuthed(false);
+    setUserEmail(null);
+    setStep(1);
+  }
+
+  // -------------------------
+  // OFFER FORM (STEP 2)
+  // -------------------------
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [city, setCity] = useState("");
+  const [eventDate, setEventDate] = useState(""); // yyyy-mm-dd
+  const [eventTime, setEventTime] = useState(""); // hh:mm
+  const [guestCount, setGuestCount] = useState<string>("");
+
+  const [details, setDetails] = useState("");
+  const [inspirationLink, setInspirationLink] = useState("");
+  const [inspirationImages, setInspirationImages] = useState<string[]>([]);
+  const [offerAmount, setOfferAmount] = useState<string>("");
+
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const canSubmitOffer = useMemo(() => {
+    const gc = Number(String(guestCount).replace(/\D/g, ""));
+    const dollars = Number(offerAmount.replace(/[^0-9.]/g, ""));
+    return (
+      isAuthed &&
+      title.trim().length > 0 &&
+      category.trim().length > 0 &&
+      city.trim().length > 0 &&
+      eventDate.length > 0 &&
+      eventTime.length > 0 &&
+      Number.isFinite(gc) &&
+      gc > 0 &&
+      details.trim().length > 0 &&
+      Number.isFinite(dollars) &&
+      dollars > 0 &&
+      acceptedTerms
+    );
+  }, [
+    isAuthed,
+    title,
+    category,
+    city,
+    eventDate,
+    eventTime,
+    guestCount,
+    details,
+    offerAmount,
+    acceptedTerms,
+  ]);
+
+  async function submitOffer() {
+    setErr(null);
+    setNote(null);
+    setBusy(true);
+
+    try {
       const sb = supabaseBrowser();
       const { data: me } = await sb.auth.getUser();
-      if (!me?.user) {
-        setErr("Your session expired. Please sign in again in Section 2.");
-        return;
-      }
+      if (!me?.user) throw new Error("Not signed in. Please create an account first.");
 
-      // service_date (DATE) & event_at (TIMESTAMPTZ)
-      let serviceDate: string | null = null;
-      let eventAt: string | null = null;
+      // event_at = timestamp with time; service_date = date only
+      const eventAt = new Date(`${eventDate}T${eventTime}:00`).toISOString();
+      const serviceDate = eventDate; // YYYY-MM-DD
 
-      if (eventDate) {
-        serviceDate = eventDate; // yyyy-mm-dd
-        if (eventTime) {
-          eventAt = new Date(`${eventDate}T${eventTime}:00`).toISOString();
-        }
-      }
-
+      const gc = Number(String(guestCount).replace(/\D/g, ""));
       const dollars = Number(offerAmount.replace(/[^0-9.]/g, ""));
-      const offerCents = Number.isFinite(dollars)
-        ? Math.round(dollars * 100)
-        : null;
-
-      const guestCountNum = guestCount
-        ? Number(guestCount.replace(/\D/g, ""))
-        : null;
+      const offerCents = Math.round(dollars * 100);
 
       const { error } = await sb.from("service_requests").insert({
         title: title.trim(),
-        category: category || null,
-        location: city || null,
+        category: category.trim(),
+        location: city.trim(),
         service_date: serviceDate,
         event_at: eventAt,
+        guest_count: gc,
+        details: details.trim(),
+        inspiration_link: inspirationLink || null,
+        inspiration_images: inspirationImages.length ? inspirationImages : null,
         offer_cents: offerCents,
         status: "open",
-        details: details || null,
-        inspiration_link: inspirationLink || null,
-        inspiration_images: inspirationImages.length
-          ? inspirationImages
-          : null,
-        guest_count: guestCountNum,
         accept_terms: acceptedTerms,
         couple_id: me.user.id,
       });
 
       if (error) throw error;
 
-      setSuccess(true);
-      // Send them to dashboard so they can see it + profile prompt
-      router.push("/dashboard/couple?posted=1");
+      setNote("Offer posted. Continue to Step 3 to finalize your dashboard.");
+      setStep(3);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  // ------------------------------------------------------------
-  // RENDER
-  // ------------------------------------------------------------
+  // -------------------------
+  // STEP 3: FINALIZE DASHBOARD
+  // -------------------------
+  async function finalizeDashboard() {
+    setErr(null);
+    setNote(null);
+    setBusy(true);
+
+    try {
+      const sb = supabaseBrowser();
+      const { data: me } = await sb.auth.getUser();
+      if (!me?.user) throw new Error("Not signed in.");
+
+      // Optional: ensure a couple profile row exists (only if your table exists)
+      // If your table is named differently, change "couple_profiles".
+      // If you don't want this, you can delete this block safely.
+      await sb.from("couple_profiles").upsert(
+        {
+          id: me.user.id,
+          email: me.user.email ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      router.push("/dashboard/couple?onboarded=1");
+    } catch (e) {
+      // If couple_profiles table doesn't exist, just go to dashboard anyway.
+      console.warn("Finalize dashboard warning:", e);
+      router.push("/dashboard/couple?onboarded=1");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="bg-white text-brand-charcoal min-h-[80vh]">
-      <div className="max-w-6xl mx-auto px-4 py-10 md:py-14 space-y-12">
-        {/* ------------------------------------------------------------ */}
-        {/* SECTION 1: INFO + IMAGE (NO STEPS, JUST OVERVIEW)            */}
-        {/* ------------------------------------------------------------ */}
+      <div className="max-w-6xl mx-auto px-4 py-10 md:py-14 space-y-10">
+        {/* Top intro */}
         <section className="grid gap-10 lg:grid-cols-[1.2fr_1fr] items-center">
           <div className="space-y-4">
             <p className="text-xs font-semibold tracking-[0.25em] text-brand-primary uppercase">
-              It&apos;s time to WedFlex Your Wedding!
+              For Couples
             </p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-brand-primary">
-              Let&apos;s post your first offer
+              Post your first WedFlex offer
             </h1>
             <p className="text-sm md:text-base text-brand-charcoal max-w-xl">
-              Offers connect you with WedFlexers who can help with your wedding needs.
-              Your offer will detail the wedding services 
-              you need and the pay you are offering.            
-                        </p>
+              Create your couple account, post your first offer, then finalize your dashboard.
+            </p>
 
-            <div className="grid gap-3 text-sm">
-              <div className="flex gap-3 items-start">
-                <span className="text-lg">🟪</span>
-                <p>
-                  <strong>First</strong>, we&apos;ll create a quick profile 
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <span className="text-lg">🟪</span>
-                <p>
-                  <strong>Next</strong>, you&apos;ll post an offer for any wedding service (bridal bouquet, a dj, a day-of coordinator, etc.)
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <span className="text-lg">🟪</span>
-                <p>
-                  <strong>Get Applications</strong> from WedFlexers who want to help with your offer. Review WedFlexers and chat to confirm details from your Dashboard.
-                                  </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <span className="text-lg">🟪</span>
-                <p>
-                  <strong>Book, pay, and relax.</strong> WedFlex holds payment to WedFlexers until
-                  the service is delivered.
-                </p>
+            <div className="flex items-center gap-2 text-xs text-brand-charcoal/70">
+              <span>Step {step} of 3</span>
+              <div className="flex gap-1">
+                {[1, 2, 3].map((s) => (
+                  <span
+                    key={s}
+                    className={cx(
+                      "h-2 w-6 rounded-full",
+                      step === s ? "bg-brand-primary" : "bg-brand-primary/20"
+                    )}
+                  />
+                ))}
               </div>
             </div>
+
+            {err && <p className="text-xs text-red-600">Error: {err}</p>}
+            {note && <p className="text-xs text-emerald-700">{note}</p>}
           </div>
 
           <div className="relative h-[260px] md:h-[320px] lg:h-[360px] rounded-3xl overflow-hidden shadow-xl">
             <Image
               src="/images/bouquet.jpg"
-              alt="WedFlexer made bouquet"
+              alt="Wedding inspiration"
               fill
               className="object-cover object-center"
-              style={{objectPosition:"50% 25%"}}//xy
+              style={{ objectPosition: "50% 25%" }}
               priority
             />
           </div>
         </section>
 
-        {/* ------------------------------------------------------------ */}
-        {/* SECTION 2: EMBEDDED AUTH (LEFT TEXT, RIGHT FORM)             */}
-        {/* ------------------------------------------------------------ */}
-        <section className="grid gap-8 lg:grid-cols-[1.2fr_1fr] items-start border border-brand-primary/10 rounded-3xl p-6 md:p-8 bg-brand-primary/3">
-          {/* LEFT: instructions */}
-          <div className="space-y-3">
-            <h2 className="text-lg md:text-xl font-bold text-brand-primary">
-              First, verify your email
-            </h2>
-            <p className="text-sm text-brand-charcoal max-w-lg">
-              We&apos;ll create a quick, secure WedFlex account for you. 
-              You&apos;ll manage your offers, messages, and WedFlexers
-              from your couple dashboard.
-            </p>
-
-            <ul className="text-sm space-y-1 text-brand-charcoal">
-              <li>• Use your email to sign in or create an account.</li>
-              <li>
-                • We&apos;ll send a magic link — no passwords to remember.
-              </li>
-              <li>
-                • After you click the link in your email, you&apos;ll come back to
-                this page to post your offer.
-              </li>
-            </ul>
-
-            {checkingAuth ? (
-              <p className="text-xs text-brand-charcoal/70 mt-2">
-                Checking if you&apos;re already signed in…
+        {/* STEP 1: Create Account */}
+        {step === 1 && (
+          <section className="rounded-3xl border border-brand-primary/15 bg-white shadow-sm p-6 md:p-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+            <div className="space-y-2">
+              <h2 className="text-lg md:text-xl font-bold text-brand-primary">
+                Step 1: Create your account
+              </h2>
+              <p className="text-sm text-brand-charcoal max-w-lg">
+                Couples use an email + password to sign in. (No magic links.)
               </p>
-            ) : isAuthed ? (
-              <p className="text-xs text-emerald-700 mt-2">
-                You are signed in as{" "}
-                <span className="font-semibold">{userEmail}</span>. Now
-                complete the form below to post your first offer!
-              </p>
-            ) : null}
-          </div>
 
-          {/* RIGHT: sign-in box */}
-          <div className="rounded-2xl border border-brand-primary/20 bg-white p-5 space-y-3 text-sm">
-            {isAuthed ? (
-              <>
-                <p className="text-brand-charcoal">
-                  You&apos;re already signed in. If needed, you can refresh your
-                  session or sign out from your dashboard later.
-                </p>
-                <button
-                  type="button"
-                  onClick={refreshAuth}
-                  className="mt-2 inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark"
-                >
-                  Refresh status
-                </button>
-              </>
-            ) : (
-              <>
-                {authSent ? (
-                  <p className="text-sm text-brand-charcoal">
-                    Magic link sent to{" "}
-                    <span className="font-semibold">{authEmail}</span>. Check your
-                    email and click the link to come back here signed in.
+              {checkingAuth ? (
+                <p className="text-xs text-brand-charcoal/70">Checking sign-in…</p>
+              ) : isAuthed ? (
+                <div className="rounded-2xl border border-brand-primary/20 bg-brand-primary/5 p-4 text-xs space-y-2">
+                  <p>
+                    Signed in as <span className="font-semibold">{userEmail}</span>
                   </p>
-                ) : (
-                  <form onSubmit={sendMagicLink} className="space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark"
+                    >
+                      Continue to Step 2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold border border-brand-primary text-brand-primary hover:bg-white"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-brand-charcoal/70">
+                  Create an account if you’re new, or sign in if you already have one.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-brand-primary/20 bg-white p-5 space-y-3 text-sm">
+              {isAuthed ? (
+                <p className="text-sm text-brand-charcoal">
+                  You’re signed in. Click “Continue to Step 2”.
+                </p>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("signup");
+                        setErr(null);
+                        setNote(null);
+                      }}
+                      className={cx(
+                        "px-3 py-2 rounded-full text-xs font-semibold border",
+                        authMode === "signup"
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-white text-brand-primary border-brand-primary/30"
+                      )}
+                    >
+                      Create account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("signin");
+                        setErr(null);
+                        setNote(null);
+                      }}
+                      className={cx(
+                        "px-3 py-2 rounded-full text-xs font-semibold border",
+                        authMode === "signin"
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-white text-brand-primary border-brand-primary/30"
+                      )}
+                    >
+                      Sign in
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAuthSubmit} className="space-y-3">
                     <div>
                       <label className="block text-xs font-semibold text-brand-primary mb-1">
                         Email
@@ -394,456 +381,305 @@ if (error) throw error;
                         placeholder="you@example.com"
                       />
                     </div>
-                    <button
-                      type="submit"
-                      disabled={authSending || !authEmail}
-                      className="w-full inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
-                    >
-                      {authSending ? "Sending link…" : "Send sign-in link"}
-                    </button>
-                    {authError && (
-                      <p className="text-xs text-red-600">Error: {authError}</p>
-                    )}
-                    {authSent && (
-    <p className="text-xs text-brand-charcoal/70 mt-1">
-      One-time sign in link sent to <strong>{authEmail}</strong>. Check your email to continue.
-    </p>
-  )}
-                  </form>
-                )}
 
-                <p className="text-[11px] text-brand-charcoal/70">
-                  We&apos;ll never share your email. By signing in, you agree to
-                  WedFlex&apos;s terms and privacy policy.
-                </p>
-              </>
-            )}
-          </div>
-        </section>
-
-        {/* ------------------------------------------------------------ */}
-        {/* SECTION 3: OFFER FORM (ONLY 1–2–3 STEP THING)                */}
-        {/* ------------------------------------------------------------ */}
-        <section className="rounded-3xl border border-brand-primary/15 bg-white shadow-sm p-6 md:p-7 space-y-6">
-          <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h2 className="text-lg md:text-xl font-bold text-brand-primary">
-                Step 2: Post your first offer
-              </h2>
-              <p className="text-sm text-brand-charcoal max-w-xl">
-                Tell WedFlexers what you need help with, when, and what you&apos;re
-                offering. This will appear in the WedFlexer feed.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-brand-charcoal/70">
-              <span>Step {step} of 3</span>
-              <div className="flex gap-1">
-                {[1, 2, 3].map((s) => (
-                  <span
-                    key={s}
-                    className={cx(
-                      "h-2 w-6 rounded-full",
-                      step === s ? "bg-brand-primary" : "bg-brand-primary/20",
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          </header>
-
-          {!isAuthed && !checkingAuth && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              Please complete the sign in step above before posting your offer.
-              You can still preview the form, but you won&apos;t be able to submit
-              until you have a WedFlex account.
-            </p>
-          )}
-
-          {/* STEP 1 – Event basics */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <h3 className="text-md font-semibold text-brand-primary">
-                1. Wedding details
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-brand-primary mb-1">
-                    What do you need help with? (Title)
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                    placeholder="Example: Setup + breakdown for backyard reception"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      Service category
-                    </label>
-                    <select
-                      className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      <option value="">Select a category…</option>
-                      {CATEGORY_OPTIONS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      City / location
-                    </label>
-                    <select
-                      className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                    >
-                      <option value="">Select city…</option>
-                      {CITY_OPTIONS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      Event date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                      value={eventDate}
-                      onChange={(e) => setEventDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      Start time
-                    </label>
-                    <input
-                      type="time"
-                      className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                      value={eventTime}
-                      onChange={(e) => setEventTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      Guest count (approx.)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                      placeholder="e.g. 120"
-                      value={guestCount}
-                      onChange={(e) => setGuestCount(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2 – Description + budget */}
-          {step === 2 && (
-            <div className="space-y-5">
-              <h3 className="text-md font-semibold text-brand-primary">
-                2. Describe the help & your offer
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-brand-primary mb-1">
-                    Describe what you need in detail
-                  </label>
-                  <textarea
-                    className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm min-h-[120px]"
-                    placeholder="Example: We need two people to help set up chairs, decorate the ceremony space, and reset the room after the reception..."
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-brand-primary mb-1">
-                    Inspiration link (optional)
-                  </label>
-                  <input
-                    type="url"
-                    className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                    placeholder="Link to Pinterest, Google Drive, etc."
-                    value={inspirationLink}
-                    onChange={(e) => setInspirationLink(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-brand-primary mb-1">
-                    Upload inspiration photos (optional)
-                  </label>
-
-                  <UploadInput
-                    bucket="wedding_inspo"
-                    label="Upload inspiration images"
-                    multiple
-                    onUploaded={(url) =>
-                      setInspirationImages((prev) => [url, ...prev])
-                    }
-                  />
-
-                  {inspirationImages.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {inspirationImages.map((src) => (
-                        <img
-                          key={src}
-                          src={src}
-                          alt="Inspiration"
-                          className="w-full h-20 object-cover rounded-lg border border-brand-primary/20"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-[11px] text-brand-charcoal/70">
-                    Décor ideas, color palettes, or venue photos help WedFlexers
-                    understand your vision.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-[1.2fr_1fr] items-end">
-                  <div>
-                    <label className="block text-xs font-semibold text-brand-primary mb-1">
-                      Your offer amount (USD)
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-brand-charcoal">$</span>
+                    <div>
+                      <label className="block text-xs font-semibold text-brand-primary mb-1">
+                        Password
+                      </label>
                       <input
-                        type="text"
-                        inputMode="decimal"
-                        className="flex-1 border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
-                        placeholder="e.g. 250"
-                        value={offerAmount}
-                        onChange={(e) => setOfferAmount(e.target.value)}
+                        type="password"
+                        required
+                        className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder="At least 8 characters"
                       />
                     </div>
-                    <p className="text-[11px] mt-1 text-brand-charcoal/70">
-                      You&apos;re setting the offer price. WedFlexers decide if they
-                      want to apply based on your offer.
-                    </p>
-                  </div>
 
-                  <p className="text-[11px] text-brand-charcoal/70 md:text-right">
-                    You can post more offers later from your dashboard for other parts
-                    of your wedding.
-                  </p>
-                </div>
-              </div>
+                    <button
+                      type="submit"
+                      disabled={busy || !authEmail || !authPassword}
+                      className="w-full inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
+                    >
+                      {busy
+                        ? "Working…"
+                        : authMode === "signup"
+                        ? "Create account"
+                        : "Sign in"}
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
-          )}
+          </section>
+        )}
 
-          {/* STEP 3 – Review + terms */}
-          {step === 3 && (
-            <div className="space-y-5">
-              <h3 className="text-md font-semibold text-brand-primary">
-                3. Review & agree to terms
-              </h3>
+        {/* STEP 2: Offer form + terms */}
+        {step === 2 && (
+          <section className="rounded-3xl border border-brand-primary/15 bg-white shadow-sm p-6 md:p-8 space-y-6">
+            <header className="space-y-2">
+              <h2 className="text-lg md:text-xl font-bold text-brand-primary">
+                Step 2: Post your offer
+              </h2>
+              <p className="text-sm text-brand-charcoal max-w-2xl">
+                Fill everything out below and accept the terms to post.
+              </p>
+            </header>
 
-              <div className="rounded-2xl border border-brand-primary/20 bg-brand-primary/5 p-4 space-y-3 text-sm">
-                <div>
-                  <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                    Title
-                  </p>
-                  <p>{title || "Not set"}</p>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Category
-                    </p>
-                    <p>{category || "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      City
-                    </p>
-                    <p>{city || "Not set"}</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Date
-                    </p>
-                    <p>{eventDate || "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Time
-                    </p>
-                    <p>{eventTime || "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Guests
-                    </p>
-                    <p>{guestCount || "Not set"}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                    Description
-                  </p>
-                  <p className="whitespace-pre-line">
-                    {details || "No description yet."}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Offer amount
-                    </p>
-                    <p>{offerAmount ? `$${offerAmount}` : "Not set"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                      Inspiration link
-                    </p>
-                    <p className="text-xs break-words">
-                      {inspirationLink || "None provided"}
-                    </p>
-                  </div>
-
-                  {inspirationImages.length > 0 && (
-                    <div className="md:col-span-2">
-                      <p className="text-xs font-semibold text-brand-primary uppercase tracking-wide mb-1">
-                        Inspiration photos
-                      </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {inspirationImages.map((src) => (
-                          <img
-                            key={src}
-                            src={src}
-                            alt="Inspiration preview"
-                            className="w-full h-20 object-cover rounded-lg border border-brand-primary/20"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            {!isAuthed && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                You must complete Step 1 (create account) before posting.
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark"
+                  >
+                    Go to Step 1
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="space-y-3 rounded-2xl border border-brand-primary/20 bg-white p-4 text-xs text-brand-charcoal">
-                <p className="font-semibold text-brand-primary text-sm">
-                  Agree to our Terms & Conditions before you post
-                </p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>
-                    You&apos;ll communicate clearly and respectfully with WedFlexers who
-                    apply to your offer.
-                  </li>
-                  <li>
-                    You won&apos;t share misleading details about the work, timing, or
-                    pay for this offer.
-                  </li>
-                  <li>
-                    You&apos;ll use WedFlex payments so WedFlexers are paid only after
-                    they deliver the service.
-                  </li>
-                  <li>
-                    You understand WedFlexers are independent contractors, not employees
-                    of WedFlex or your event.
-                  </li>
-                </ul>
-
-                <label className="flex items-start gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 border-brand-primary/40 rounded"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  />
-                  <span>
-                    I have read and agree to these terms for posting offers on WedFlex.
-                  </span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Title *
                 </label>
+                <input
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Example: Need help setting up chairs + decor"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Category *
+                </label>
+                <select
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {err && <p className="text-xs text-red-600">Error: {err}</p>}
-          {success && (
-            <p className="text-xs text-emerald-700">
-              Offer posted! Redirecting you to your dashboard…
-            </p>
-          )}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  City *
+                </label>
+                <select
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm bg-white"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {CITY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Step navigation buttons */}
-          <div className="flex justify-between pt-2">
-            <button
-              type="button"
-              onClick={goBack}
-              disabled={step === 1 || loading}
-              className="text-xs md:text-sm text-brand-charcoal/70 hover:text-brand-charcoal disabled:opacity-30"
-            >
-              {step === 1 ? "" : "← Back"}
-            </button>
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Guest count *
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                  value={guestCount}
+                  onChange={(e) => setGuestCount(e.target.value)}
+                  placeholder="120"
+                />
+              </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={loading}
-              className="inline-flex items-center rounded-full px-5 py-2 text-xs md:text-sm font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
-            >
-              {step === 3 ? (loading ? "Posting…" : "Post offer") : "Continue"}
-            </button>
-          </div>
-        </section>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                />
+              </div>
 
-        {/* ------------------------------------------------------------ */}
-        {/* SECTION 4: PROFILE NUDGE → DASHBOARD                         */}
-        {/* ------------------------------------------------------------ */}
-        <section className="rounded-3xl border border-brand-primary/10 bg-brand-primary/5 px-5 py-6 md:px-6 md:py-7 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-md md:text-lg font-bold text-brand-primary">
-              Step 3: Complete your couple profile
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Time *
+                </label>
+                <input
+                  type="time"
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                  value={eventTime}
+                  onChange={(e) => setEventTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-brand-primary mb-1">
+                Details *
+              </label>
+              <textarea
+                className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm min-h-[120px]"
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                placeholder="Explain exactly what you need, timing, expectations, dress code, etc."
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Inspiration link (optional)
+                </label>
+                <input
+                  className="w-full border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                  value={inspirationLink}
+                  onChange={(e) => setInspirationLink(e.target.value)}
+                  placeholder="Pinterest / Google Drive link"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-brand-primary mb-1">
+                  Offer amount (USD) *
+                </label>
+                <div className="flex items-center gap-2">
+                  <span>$</span>
+                  <input
+                    className="flex-1 border border-brand-primary/30 rounded-lg px-3 py-2 text-sm"
+                    value={offerAmount}
+                    onChange={(e) => setOfferAmount(e.target.value)}
+                    placeholder="250"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-brand-primary mb-1">
+                Upload inspiration photos (optional)
+              </label>
+              <UploadInput
+                bucket="wedding_inspo"
+                label="Upload inspiration images"
+                multiple
+                onUploaded={(url) => setInspirationImages((prev) => [url, ...prev])}
+              />
+              {inspirationImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {inspirationImages.map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt="Inspiration"
+                      className="w-full h-20 object-cover rounded-lg border border-brand-primary/20"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-brand-primary/20 bg-brand-primary/5 p-4 text-xs space-y-2">
+              <p className="font-semibold text-brand-primary text-sm">Terms & Conditions</p>
+              <ul className="list-disc list-inside space-y-1 text-brand-charcoal">
+                <li>You will communicate clearly and respectfully with applicants.</li>
+                <li>You will not misrepresent the work, timing, or pay.</li>
+                <li>You understand WedFlexers are independent contractors, not employees of WedFlex.</li>
+              </ul>
+
+              <label className="flex items-start gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 border-brand-primary/40 rounded"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                />
+                <span>I agree to these terms for posting offers on WedFlex.</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-xs md:text-sm text-brand-charcoal/70 hover:text-brand-charcoal"
+              >
+                ← Back to Step 1
+              </button>
+
+              <button
+                type="button"
+                onClick={submitOffer}
+                disabled={!canSubmitOffer || busy}
+                className="inline-flex items-center rounded-full px-5 py-2 text-xs md:text-sm font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
+              >
+                {busy ? "Posting…" : "Post offer"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* STEP 3: Finalize dashboard */}
+        {step === 3 && (
+          <section className="rounded-3xl border border-brand-primary/15 bg-white shadow-sm p-6 md:p-8 space-y-4">
+            <h2 className="text-lg md:text-xl font-bold text-brand-primary">
+              Step 3: Finalize your dashboard
             </h2>
-            <p className="text-sm text-brand-charcoal max-w-xl">
-              Congratulations! You just posted your first offer on WedFlex!
-              Now head to your couple dashboard and complete your profile to tell
-              WedFlexers more about your story, start reviewing applications, and tracking your budget. 
+            <p className="text-sm text-brand-charcoal max-w-2xl">
+              Your offer is posted. Next, complete your couple profile so you can manage offers and
+              choose the right WedFlexer.
             </p>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/dashboard/couple"
-              className="inline-flex items-center rounded-full px-4 py-2 text-xs md:text-sm font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark"
-            >
-              Go to my dashboard
-            </Link>
-          </div>
-        </section>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={finalizeDashboard}
+                disabled={busy}
+                className="inline-flex items-center rounded-full px-5 py-2 text-xs md:text-sm font-semibold bg-brand-primary text-white hover:bg-brand-primary-dark disabled:opacity-60"
+              >
+                {busy ? "Loading…" : "Go to my dashboard"}
+              </button>
+
+              <Link
+                href="/dashboard/couple"
+                className="inline-flex items-center rounded-full px-5 py-2 text-xs md:text-sm font-semibold border border-brand-primary text-brand-primary hover:bg-white"
+              >
+                Skip and go now
+              </Link>
+            </div>
+
+            <p className="text-[11px] text-brand-charcoal/60">
+              If you run into issues, you can always return here and post another offer later.
+            </p>
+          </section>
+        )}
+
+        {/* Tiny help footer */}
+        <p className="text-[11px] text-brand-charcoal/60">
+          Want to go home?{" "}
+          <Link href="/" className="underline text-brand-primary">
+            Return to homepage
+          </Link>
+        </p>
       </div>
     </main>
   );

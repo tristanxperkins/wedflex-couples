@@ -25,8 +25,7 @@ export default function Nav() {
   async function handleSignOut() {
     const sb = supabaseBrowser();
     await sb.auth.signOut();
-    router.push("/");
-    router.refresh();
+    window.location.href="/"
   }
 
   return (
