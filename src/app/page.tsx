@@ -88,22 +88,7 @@ export default function WedFlexerHome() {
           {/* LEFT - HOW IT WORKS */}
           <div className="rounded-3xl border border-brand-primary/20 p-6 shadow-sm bg-white">
             <h3 className="text-lg font-bold text-brand-primary">How WedFlex Works</h3>
-            <p className="space-y-1.5 text-sm text-brand-charcoal"> WedFlex connects couples to WedFlexers through offers </p>
-            <ul className="space-y-2 mt-3 text-brand-charcoal text-sm leading-relaxed list-none">
-              <li>💜 Real couples post offers for wedding services</li>
-              <li>🔍 WedFlexers accept offers and apply</li>
-              <li>📊 Chat with WedFlexers to confirm details </li>
-              <li>💸 Book and pay securely through WedFlex Escrow via Stripe</li>
-              <li>📅 Track your budget and WedFlexer services on your dashboard</li>
-              
-              
-            </ul>
-          </div>
-
-          {/* RIGHT - WHO ARE WEDFLEXERS */}
-          <div className="rounded-3xl border border-brand-primary/20 p-6 shadow-sm bg-white">
-            <h3 className="text-lg font-bold text-brand-primary">Who Are WedFlexers?</h3>
-            <ul className="space-y-1.5 mt-3 text-brand-charcoal text-sm list-none">
+             <ul className="space-y-2 mt-3 text-brand-charcoal text-sm leading-relaxed list-none">
               <li>🎨 Crafters, DIYers, & Creatives</li>
               <li>📋 Type-A organizers & planners</li>
               <li>📸 Photographers & Content Creators</li>
@@ -111,6 +96,20 @@ export default function WedFlexerHome() {
               <li>🍰 Chefs & Bakers</li>
               <li>🎵 Musicians & Music Aficionados</li>
               <li>🚀 Side-hustlers & Entrepreneurs</li>
+              
+                          </ul>
+          </div>
+
+          {/* RIGHT - WHO ARE WEDFLEXERS */}
+          <div className="rounded-3xl border border-brand-primary/20 p-6 shadow-sm bg-white">
+            <h3 className="text-lg font-bold text-brand-primary">How WedFlex Works</h3>
+            <p className="space-y-1.5 text-sm text-brand-charcoal"> WedFlex connects couples to WedFlexers through offers </p>
+            <ul className="space-y-1.5 mt-3 text-brand-charcoal text-sm leading-relaxed list-none">
+              <li>💜 Real couples post offers for wedding services</li>
+              <li>🔍 WedFlexers accept offers and apply</li>
+              <li>📊 Chat with WedFlexers to confirm details </li>
+              <li>💸 Book and pay securely through WedFlex Escrow via Stripe</li>
+              <li>📅 Track your budget and WedFlexer services on your dashboard</li>
                           </ul>
           </div>
         </section>
