@@ -9,7 +9,7 @@ export default function CoupleSignInPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPath, setNextPath] = useState<string | null>(null);
-  const [authEmail, setAuthEmail] = useState("");
+ 
 
   // Read ?next= from URL so we can send it through the magic-link callback
   useEffect(() => {
@@ -20,44 +20,42 @@ export default function CoupleSignInPage() {
   }, []);
 
   async function sendLink(e: React.FormEvent) {
-    e.preventDefault();
-    setSending(true);
-    setError(null);
+  e.preventDefault();
+  setSending(true);
+  setError(null);
 
-    try {
-      const sb = supabaseBrowser();
-if (typeof window === "undefined") throw new Error("Window not available");
+  try {
+    const sb = supabaseBrowser();
+    if (typeof window === "undefined") throw new Error("Window not available");
 
-// Always come back HERE after clicking the magic link
-const nextPath = "/post-your-first-offer";
+    // Where the user should land AFTER auth
+    const next = nextPath || "/post-your-first-offer";
 
-// Prefer a fixed public site URL (prod) to avoid preview-origin problems.
-// Fallback to window.location.origin for local/dev.
-const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.NEXT_PUBLIC_APP_ORIGIN ||
-  window.location.origin;
+    // Always force the COUPLES production domain in prod
+    // (and fallback locally)
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
-// Build callback URL specifically for the COUPLES app
-const callbackUrl = new URL("/auth/callback", baseUrl);
-callbackUrl.searchParams.set("role", "couple");
-callbackUrl.searchParams.set("next", nextPath);
+    const callbackUrl = new URL("/auth/callback", baseUrl);
+    callbackUrl.searchParams.set("role", "couple");
+    callbackUrl.searchParams.set("next", next);
 
-const { error } = await sb.auth.signInWithOtp({
-  email: authEmail,
-  options: {
-    emailRedirectTo: callbackUrl.toString(),
-  },
-});
+    const { error } = await sb.auth.signInWithOtp({
+      email, // ✅ use the actual input state
+      options: {
+        emailRedirectTo: callbackUrl.toString(),
+      },
+    });
 
-if (error) throw error;
-      setSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSending(false);
-    }
+    if (error) throw error;
+    setSent(true);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : String(err));
+  } finally {
+    setSending(false);
   }
+}
+
 
   return (
     <main className="min-h-screen bg-[#faf5ff] text-brand-charcoal">
