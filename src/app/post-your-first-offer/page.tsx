@@ -243,14 +243,45 @@ export default function PostFirstOfferPage() {
         <section className="grid gap-10 lg:grid-cols-[1.2fr_1fr] items-center">
           <div className="space-y-4">
             <p className="text-xs font-semibold tracking-[0.25em] text-brand-primary uppercase">
-              For Couples
+              It&apos;s time to WedFlex Your Wedding!
             </p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-brand-primary">
-              Post your first WedFlex offer
+               Let&apos;s post your first WedFlex offer
             </h1>
             <p className="text-sm md:text-base text-brand-charcoal max-w-xl">
-              Create your couple account, post your first offer, then finalize your dashboard.
-            </p>
+              Offers connect you with WedFlexers who can help with your wedding needs.
+              Your offer will detail the wedding services
+              you need and the pay you are offering.            
+                        </p>
+
+
+            <div className="grid gap-3 text-sm">
+              <div className="flex gap-3 items-start">
+                <span className="text-lg">🟪</span>
+                <p>
+                  <strong>First</strong>, we&apos;ll create a quick profile
+                </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg">🟪</span>
+                <p>
+                  <strong>Next</strong>, you&apos;ll post an offer for any wedding service (bridal bouquet, a dj, a day-of coordinator, etc.)
+                </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg">🟪</span>
+                <p>
+                  <strong>Get Applications</strong> from WedFlexers who want to help with your offer. Review WedFlexers and chat to confirm details from your Dashboard.
+                                  </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg">🟪</span>
+                <p>
+                  <strong>Book, pay, and relax.</strong> WedFlex holds payment to WedFlexers until
+                  the service is delivered.
+                </p>
+ </div>
+  </div>
 
             <div className="flex items-center gap-2 text-xs text-brand-charcoal/70">
               <span>Step {step} of 3</span>
