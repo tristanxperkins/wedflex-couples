@@ -1,14 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function toErr(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  try { return JSON.stringify(e); } catch { return String(e); }
-}
+import { UpdateApplicationStatusSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
 interface Params {
   id: string;
@@ -20,24 +13,22 @@ export async function PATCH(
 ) {
   try {
     const { id } = await ctx.params;
-    const hdrs = await headers();
-    const auth = hdrs.get("authorization") ?? "";
 
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: auth } },
-    });
+    const body = await req.json().catch(() => ({}));
+    const parsed = UpdateApplicationStatusSchema.safeParse(body);
 
-    const body: { status?: string } = await req.json().catch(() => ({}));
-    const nextStatus = (body.status ?? "").trim().toLowerCase();
-
-    const allowed = ["pending", "accepted", "rejected", "withdrawn"] as const;
-    if (!allowed.includes(nextStatus as (typeof allowed)[number])) {
-      return NextResponse.json({ ok: false, error: "Invalid status value" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
     }
+
+    const supabase = await createUserClient();
+
+    const rl = checkRateLimit(rateLimitKey(req), RATE_LIMITS.mutation);
+    if (rl) return rl;
 
     const { data, error } = await supabase
       .from("applications")
-      .update({ status: nextStatus })
+      .update({ status: parsed.data.status })
       .eq("id", id)
       .select("id, request_id, status, updated_at")
       .single();
@@ -48,6 +39,6 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: toErr(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

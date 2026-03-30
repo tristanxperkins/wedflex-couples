@@ -1,10 +1,10 @@
-// src/app/api/files/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse, type NextRequest } from "next/server";
-import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { FileSignedUrlSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, createAdminClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
 type AppRow = {
   id: string;
@@ -20,36 +20,23 @@ type ReqRow = {
 
 export async function POST(req: NextRequest) {
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const json = await req.json();
+    const parsed = FileSignedUrlSchema.safeParse(json);
 
-    const hdrs = await headers();
-    const auth = hdrs.get("authorization") ?? "";
-
-    const body = await req.json();
-    const application_id: string = body.application_id;
-    const file_path: string = body.file_path; // e.g. "<appId>/<filename>"
-
-    if (!application_id || !file_path) {
-      return NextResponse.json(
-        { ok: false, error: "Missing application_id or file_path" },
-        { status: 400 }
-      );
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
     }
 
-    // User-scoped client for auth / RLS paths
-    const userClient = createClient(url, anon, {
-      global: { headers: { Authorization: auth } },
-    });
+    const { application_id, file_path } = parsed.data;
 
-    // Who am I?
-    const { data: me, error: meErr } = await userClient.auth.getUser();
-    if (meErr || !me?.user) {
-      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
-    }
+    const userClient = await createUserClient();
+    const { user, response } = await requireAuth(userClient);
+    if (!user) return response!;
 
-    // 1) Get the application (owner wedflexer + request_id)
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.read);
+    if (rl) return rl;
+
+    // Get the application
     const { data: app, error: aErr } = await userClient
       .from("applications")
       .select("id, wedflexer_id, request_id, file_urls")
@@ -60,7 +47,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Application not found" }, { status: 404 });
     }
 
-    // 2) Look up the service request to find the couple_id (no embed)
+    // Look up the service request for couple_id
     const { data: reqRow, error: rErr } = await userClient
       .from("service_requests")
       .select("id, couple_id")
@@ -71,20 +58,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Related request not found" }, { status: 404 });
     }
 
-    const coupleId = reqRow.couple_id;
-
-    // Authorization: only the app’s wedflexer or the request’s couple can create signed URLs
-    const isOwner = me.user.id === app.wedflexer_id || me.user.id === coupleId;
+    // Authorization: only the app's wedflexer or the request's couple
+    const isOwner = user.id === app.wedflexer_id || user.id === reqRow.couple_id;
     if (!isOwner) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    // Service client strictly on the server to create a signed URL
-    const serverClient = createClient(url, service);
-
+    const serverClient = createAdminClient();
     const { data: signed, error: sErr } = await serverClient.storage
       .from("application_files")
-      .createSignedUrl(file_path, 60 * 10); // 10 min
+      .createSignedUrl(file_path, 60 * 10);
 
     if (sErr) {
       return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
@@ -92,12 +75,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, url: signed.signedUrl });
   } catch (e) {
-    const msg =
-      e instanceof Error
-        ? e.message
-        : (() => {
-            try { return JSON.stringify(e); } catch { return String(e); }
-          })();
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

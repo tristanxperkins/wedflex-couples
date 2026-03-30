@@ -1,18 +1,13 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createUserClient, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-     const hdrs = await headers();
-    const auth = hdrs.get("authorization") ?? "";
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: auth } },
-    });
+    const rl = checkRateLimit(rateLimitKey(req), RATE_LIMITS.read);
+    if (rl) return rl;
+
+    const supabase = await createUserClient();
 
     const { data, error } = await supabase
       .from("service_requests")
@@ -25,8 +20,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
     return NextResponse.json({ ok: true, data });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

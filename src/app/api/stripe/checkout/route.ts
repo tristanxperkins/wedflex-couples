@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { StripeCheckoutSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // platform fee in basis points, e.g. 800 = 8%
 const FEE_BPS = Number(process.env.PLATFORM_FEE_BPS ?? "800");
@@ -20,27 +20,23 @@ type ServiceReqRow = {
 
 export async function POST(req: NextRequest) {
   try {
-    // Authenticated Supabase client (RLS will use this token)
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: req.headers.get("authorization") ?? "" } },
-    });
+    const json = await req.json();
+    const parsed = StripeCheckoutSchema.safeParse(json);
 
-    // Who is calling this?
-    const { data: me } = await supabase.auth.getUser();
-    if (!me?.user) {
-      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
     }
 
-    const { application_id } = await req.json();
+    const { application_id } = parsed.data;
 
-    if (!application_id || typeof application_id !== "string") {
-      return NextResponse.json(
-        { ok: false, error: "Missing or invalid application_id" },
-        { status: 400 },
-      );
-    }
+    const supabase = await createUserClient();
+    const { user, response } = await requireAuth(supabase);
+    if (!user) return response!;
 
-    // Pull application + related service_request (the original offer)
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.sensitive);
+    if (rl) return rl;
+
+    // Pull application + related service_request
     const { data: rawApp, error: aErr } = await supabase
       .from("applications")
       .select(
@@ -69,7 +65,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Normalize shape: Supabase can return `service_requests` as array or single object
     const app = rawApp as {
       id: string;
       bid_cents: number | null;
@@ -91,7 +86,6 @@ export async function POST(req: NextRequest) {
 
     const sr = srRaw as ServiceReqRow;
 
-    // Offer must still be open
     if (sr.status !== "open") {
       return NextResponse.json(
         { ok: false, error: "Offer is not open for booking" },
@@ -130,7 +124,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Close the original request & mark this application as awarded
     await supabase
       .from("service_requests")
       .update({ status: "closed" })
@@ -144,32 +137,37 @@ export async function POST(req: NextRequest) {
     const origin =
       req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_ORIGIN ?? "";
 
-    // Create Stripe Checkout session
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      success_url: `${origin}/booked/success?booking=${booking.id}`,
-      cancel_url: `${origin}/r/${app.request_id}`,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: amount_cents,
-            product_data: {
-              name: `Booking: ${sr.title}`,
-              description: `${sr.location} • Service date ${sr.service_date}`,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        booking_id: booking.id,
-        wedflexer_id: app.wedflexer_id,
-        fee_cents: String(fee_cents),
-      },
-    });
+    // Stripe idempotency key prevents duplicate charges on retries
+    const idempotencyKey = `checkout_${booking.id}`;
 
-    // Record the pending payment in your DB
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        success_url: `${origin}/booked/success?booking=${booking.id}`,
+        cancel_url: `${origin}/r/${app.request_id}`,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amount_cents,
+              product_data: {
+                name: `Booking: ${sr.title}`,
+                description: `${sr.location} • Service date ${sr.service_date}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          booking_id: booking.id,
+          wedflexer_id: app.wedflexer_id,
+          fee_cents: String(fee_cents),
+        },
+      },
+      { idempotencyKey },
+    );
+
+    // Record the pending payment
     await supabase.from("payments").insert({
       booking_id: booking.id,
       couple_id: sr.couple_id,
@@ -181,7 +179,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, url: session.url });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

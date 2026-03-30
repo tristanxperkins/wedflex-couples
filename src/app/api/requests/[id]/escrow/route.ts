@@ -1,45 +1,37 @@
-// src/app/api/requests/[id]/escrow/route.ts
 import { NextResponse, type NextRequest } from "next/server";
-import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function errToString(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  try { return JSON.stringify(e); } catch { return String(e); }
-}
+import { CreateEscrowSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
 export async function POST(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> } // Next 15: params is a Promise
+  ctx: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id: request_id } = await ctx.params;
 
-    // Parse body safely
-    const body = (await req.json()) as { amount_cents?: unknown };
-    const amount_cents_num =
-      typeof body.amount_cents === "number" ? body.amount_cents : Number(body.amount_cents);
+    const json = await req.json();
+    const parsed = CreateEscrowSchema.safeParse(json);
 
-    if (!request_id || !Number.isFinite(amount_cents_num) || amount_cents_num <= 0) {
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
+    }
+
+    const amount_cents = parsed.data.amount_cents!;
+
+    if (!request_id) {
       return NextResponse.json(
-        { ok: false, error: "Missing request_id or invalid amount_cents" },
+        { ok: false, error: "Missing request_id" },
         { status: 400 }
       );
     }
 
-    // Next 15: dynamic headers must be awaited
-    const hdrs = await headers();
-    const auth = hdrs.get("authorization") ?? "";
-    const sb = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const sb = await createUserClient();
+    const { user, response } = await requireAuth(sb);
+    if (!user) return response!;
 
-    // Who am I?
-    const { data: me, error: meErr } = await sb.auth.getUser();
-    if (meErr || !me?.user) {
-      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
-    }
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.sensitive);
+    if (rl) return rl;
 
     // Request must belong to me (couple), be awarded, and have a winner
     const { data: reqRow, error: rErr } = await sb
@@ -51,7 +43,7 @@ export async function POST(
     if (rErr || !reqRow) {
       return NextResponse.json({ ok: false, error: "Request not found" }, { status: 404 });
     }
-    if (reqRow.couple_id !== me.user.id) {
+    if (reqRow.couple_id !== user.id) {
       return NextResponse.json({ ok: false, error: "Not authorized" }, { status: 403 });
     }
     if (reqRow.status !== "awarded" || !reqRow.awarded_wedflexer_id) {
@@ -61,14 +53,13 @@ export async function POST(
       );
     }
 
-    // Create ESCROW payment (unique partial index protects from duplicates)
     const { data, error } = await sb
       .from("payments")
       .insert({
         request_id,
-        couple_id: me.user.id,
+        couple_id: user.id,
         wedflexer_id: reqRow.awarded_wedflexer_id,
-        amount_cents: Math.round(amount_cents_num),
+        amount_cents,
         status: "escrowed",
       })
       .select("id")
@@ -80,6 +71,6 @@ export async function POST(
 
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: errToString(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

@@ -1,37 +1,37 @@
-// src/app/api/requests/[id]/book/route.ts
 import { NextResponse, type NextRequest } from "next/server";
-import { headers } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function errString(e: unknown) {
-  if (e instanceof Error) return e.message;
-  try { return JSON.stringify(e); } catch { return String(e); }
-}
+import { BookRequestSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> } // ✅ Next 15: params is a Promise
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: request_id } = await context.params; // ✅ await params
-    const { application_id } = await req.json();
+    const { id: request_id } = await context.params;
 
-    if (!request_id || !application_id) {
+    const json = await req.json();
+    const parsed = BookRequestSchema.safeParse(json);
+
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
+    }
+
+    const { application_id } = parsed.data;
+
+    if (!request_id) {
       return NextResponse.json(
-        { ok: false, error: "Missing request_id or application_id" },
+        { ok: false, error: "Missing request_id" },
         { status: 400 }
       );
     }
 
-    const hdrs = await headers(); // ✅ Next 15 dynamic APIs must be awaited
-    const auth = hdrs.get("authorization") ?? "";
+    const supabase = await createUserClient();
+    const { user, response } = await requireAuth(supabase);
+    if (!user) return response!;
 
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: auth } },
-    });
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.sensitive);
+    if (rl) return rl;
 
     // Verify request ownership & openness
     const { data: reqRow, error: reqErr } = await supabase
@@ -46,15 +46,9 @@ export async function POST(
     if (reqRow.status !== "open")
       return NextResponse.json({ ok: false, error: "Request not open" }, { status: 400 });
 
-    // Who am I?
-    const { data: me, error: meErr } = await supabase.auth.getUser();
-    if (meErr || !me?.user)
-      return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
-
-    if (me.user.id !== reqRow.couple_id)
+    if (user.id !== reqRow.couple_id)
       return NextResponse.json({ ok: false, error: "Not authorized" }, { status: 403 });
 
-    // Fetch application and wedflexer
     const { data: appRow, error: appErr } = await supabase
       .from("applications")
       .select("id, request_id, wedflexer_id")
@@ -68,7 +62,7 @@ export async function POST(
         { status: 404 }
       );
 
-    // 1) Accept chosen application
+    // Accept chosen application
     const { error: winnerErr } = await supabase
       .from("applications")
       .update({ status: "accepted" })
@@ -76,7 +70,7 @@ export async function POST(
     if (winnerErr)
       return NextResponse.json({ ok: false, error: winnerErr.message }, { status: 400 });
 
-    // 2) Reject all others on the request
+    // Reject all others
     const { error: rejectErr } = await supabase
       .from("applications")
       .update({ status: "rejected" })
@@ -85,7 +79,7 @@ export async function POST(
     if (rejectErr)
       return NextResponse.json({ ok: false, error: rejectErr.message }, { status: 400 });
 
-    // 3) Mark request as awarded
+    // Mark request as awarded
     const { error: updErr } = await supabase
       .from("service_requests")
       .update({
@@ -95,12 +89,12 @@ export async function POST(
         awarded_at: new Date().toISOString(),
       })
       .eq("id", request_id)
-      .eq("couple_id", me.user.id);
+      .eq("couple_id", user.id);
     if (updErr)
       return NextResponse.json({ ok: false, error: updErr.message }, { status: 400 });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: errString(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: errStr(e) }, { status: 500 });
   }
 }

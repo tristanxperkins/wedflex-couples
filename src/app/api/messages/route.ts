@@ -1,44 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse, NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { headers } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
+import { SendMessageSchema, zodError } from "@/app/lib/validation";
+import { createUserClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-/**
- * helpers
- */
-function errStr(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return String(e);
-  }
-}
-
-// GET /api/messages?other=<uuid>&request=<request_id?>
-// returns the thread + messages between me and "other" for (optional) request_id
 export async function GET(req: NextRequest) {
   try {
-    const hdrs = await headers();
-    const authHeader = hdrs.get("authorization") ?? "";
+    const supabase = await createUserClient();
+    const { user, response } = await requireAuth(supabase);
+    if (!user) return response!;
 
-    // create supabase instance with user token (RLS)
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    // who am I
-    const { data: userRes, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !userRes?.user) {
-      return NextResponse.json(
-        { ok: false, error: "Not authenticated" },
-        { status: 401 }
-      );
-    }
-    const myId = userRes.user.id;
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.read);
+    if (rl) return rl;
 
     const { searchParams } = new URL(req.url);
     const otherUserId = searchParams.get("other");
@@ -51,11 +23,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // normalize pair so (A,B) and (B,A) match same row
+    const myId = user.id;
     const [u1, u2] =
       myId < otherUserId ? [myId, otherUserId] : [otherUserId, myId];
 
-    // find thread
     const { data: threadRow, error: threadErr } = await supabase
       .from("message_threads")
       .select("id")
@@ -65,11 +36,9 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (threadErr || !threadRow) {
-      // no thread yet → return empty array
       return NextResponse.json({ ok: true, messages: [] });
     }
 
-    // load messages for that thread
     const { data: msgs, error: msgErr } = await supabase
       .from("messages")
       .select("id,sender_id,body,file_url,created_at")
@@ -87,52 +56,29 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/messages
-// body: { other: <uuid>, request_id?: <uuid|null>, text: <string>, file_url?: <string> }
 export async function POST(req: NextRequest) {
   try {
-    const hdrs = await headers();
-    const authHeader = hdrs.get("authorization") ?? "";
+    const json = await req.json();
+    const parsed = SendMessageSchema.safeParse(json);
 
-    // supabase with RLS identity
-    const supabase = createClient(url, anon, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    // me
-    const { data: userRes, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !userRes?.user) {
-      return NextResponse.json(
-        { ok: false, error: "Not authenticated" },
-        { status: 401 }
-      );
-    }
-    const myId = userRes.user.id;
-
-    const bodyJson = await req.json();
-    const otherUserId = bodyJson.other;
-    const requestId = bodyJson.request_id ?? null;
-    const text = bodyJson.text ?? "";
-    const fileUrl = bodyJson.file_url ?? null;
-
-    if (!otherUserId) {
-      return NextResponse.json(
-        { ok: false, error: "Missing other user id" },
-        { status: 400 }
-      );
-    }
-    if (!text && !fileUrl) {
-      return NextResponse.json(
-        { ok: false, error: "Message empty" },
-        { status: 400 }
-      );
+    if (!parsed.success) {
+      return NextResponse.json(zodError(parsed), { status: 400 });
     }
 
-    // normalize the pair
+    const { other: otherUserId, request_id: requestId, text, file_url: fileUrl } = parsed.data;
+
+    const supabase = await createUserClient();
+    const { user, response } = await requireAuth(supabase);
+    if (!user) return response!;
+
+    const rl = checkRateLimit(rateLimitKey(req, user.id), RATE_LIMITS.mutation);
+    if (rl) return rl;
+
+    const myId = user.id;
     const [u1, u2] =
       myId < otherUserId ? [myId, otherUserId] : [otherUserId, myId];
 
-    // 1. try to find existing thread
+    // Find or create thread
     const { data: threadRow, error: findErr } = await supabase
       .from("message_threads")
       .select("id")
@@ -146,7 +92,6 @@ export async function POST(req: NextRequest) {
     if (!findErr && threadRow) {
       threadId = threadRow.id;
     } else {
-      // 2. create new thread
       const { data: newThread, error: insertErr } = await supabase
         .from("message_threads")
         .insert({
@@ -164,18 +109,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-
       threadId = newThread.id;
     }
 
-    // 3. insert message
     const { data: newMsg, error: msgErr } = await supabase
       .from("messages")
       .insert({
         thread_id: threadId,
         sender_id: myId,
-        body: text,
-        file_url: fileUrl,
+        body: text.trim(),
+        file_url: fileUrl ?? null,
       })
       .select("id,sender_id,body,file_url,created_at")
       .single();
@@ -187,7 +130,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. bump thread last_message_at
     await supabase
       .from("message_threads")
       .update({ last_message_at: new Date().toISOString() })
