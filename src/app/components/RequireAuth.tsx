@@ -14,12 +14,12 @@ export default function RequireAuth({ children }: Props) {
     const sb = supabaseBrowser();
 
     sb.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace("/signin");
+      if (!data.session) router.replace("/auth/signin");
       else setIsLoading(false);
     });
 
     const { data: listener } = sb.auth.onAuthStateChange((_e, session) => {
-      if (!session) router.replace("/signin");
+      if (!session) router.replace("/auth/signin");
     });
 
     return () => {
