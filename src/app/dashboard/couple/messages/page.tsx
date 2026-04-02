@@ -6,23 +6,70 @@ import DashboardSidebar from "../../../components/DashboardSidebar";
 import Chat from "../../../components/chat";
 import { supabaseBrowser } from "../../../supabase/client";
 
-// Couple inbox. Talk to WedFlexers about your posted offers.
+// Couple inbox. Shows all active message threads with WedFlexers.
+
+type RawThread = {
+  id: string;
+  user_one: string;
+  user_two: string;
+  request_id: string | null;
+  last_message_at: string | null;
+};
+
+type Thread = RawThread & {
+  otherUserId: string;
+  requestTitle: string | null;
+};
 
 export default function CoupleMessagesPage() {
-  const [meId, setMeId] = useState<string | null>(null);
-  const [otherId, setOtherId] = useState<string>("");
-  const [requestId, setRequestId] = useState<string>("");
-  const [err, setErr] = useState<string | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [selected, setSelected] = useState<Thread | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const sb = supabaseBrowser();
-        const { data: me, error } = await sb.auth.getUser();
-        if (error) throw error;
-        if (!me?.user) throw new Error("Not authenticated");
-        setMeId(me.user.id);
+        const { data: userData, error: userErr } = await sb.auth.getUser();
+        if (userErr || !userData?.user) throw new Error("Not authenticated");
+        const uid = userData.user.id;
+
+        const { data: rawThreads, error: tErr } = await sb
+          .from("message_threads")
+          .select("id,user_one,user_two,request_id,last_message_at")
+          .or(`user_one.eq.${uid},user_two.eq.${uid}`)
+          .order("last_message_at", { ascending: false });
+        if (tErr) throw tErr;
+
+        const rows = (rawThreads ?? []) as RawThread[];
+        const enriched = rows.map((t) => ({
+          ...t,
+          otherUserId: t.user_one === uid ? t.user_two : t.user_one,
+          requestTitle: null as string | null,
+        }));
+
+        // Fetch service request titles
+        const requestIds = enriched
+          .map((t) => t.request_id)
+          .filter(Boolean) as string[];
+        const titleMap: Record<string, string> = {};
+        if (requestIds.length > 0) {
+          const { data: reqs } = await sb
+            .from("service_requests")
+            .select("id,title")
+            .in("id", requestIds);
+          (reqs ?? []).forEach((r: { id: string; title: string }) => {
+            titleMap[r.id] = r.title;
+          });
+        }
+
+        setThreads(
+          enriched.map((t) => ({
+            ...t,
+            requestTitle: t.request_id ? (titleMap[t.request_id] ?? null) : null,
+          }))
+        );
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
       } finally {
@@ -44,54 +91,56 @@ export default function CoupleMessagesPage() {
             </p>
           </header>
 
-          {loading && <p>Loading…</p>}
+          {loading && <p className="text-sm text-slate-500">Loading…</p>}
           {err && <p className="text-red-600 text-sm">Error: {err}</p>}
 
-          {!loading && (
-            <>
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="text-sm font-medium">Open a conversation</div>
-
-                <label className="block text-sm">
-                  <span className="block text-xs mb-1">
-                    Other user ID (the WedFlexer&apos;s user id)
-                  </span>
-                  <input
-                    className="border rounded px-2 py-1 w-full text-sm"
-                    placeholder="paste other user's id"
-                    value={otherId}
-                    onChange={(e) => setOtherId(e.target.value)}
-                  />
-                </label>
-
-                <label className="block text-sm">
-                  <span className="block text-xs mb-1">
-                    Request ID (optional, link this chat to a posted offer)
-                  </span>
-                  <input
-                    className="border rounded px-2 py-1 w-full text-sm"
-                    placeholder="optional service_requests.id"
-                    value={requestId}
-                    onChange={(e) => setRequestId(e.target.value)}
-                  />
-                </label>
-
-                <p className="text-[11px] opacity-60">
-                  Later this becomes your inbox list (each applicant shows up).
-                </p>
+          {!loading && !err && (
+            <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+              {/* Thread list */}
+              <div className="border rounded-lg divide-y overflow-hidden self-start">
+                {threads.length === 0 ? (
+                  <p className="p-4 text-sm opacity-70">
+                    No conversations yet. WedFlexers who apply to your offers
+                    will appear here.
+                  </p>
+                ) : (
+                  threads.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelected(t)}
+                      className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
+                        selected?.id === t.id
+                          ? "bg-purple-50 border-l-2 border-purple-700"
+                          : ""
+                      }`}
+                    >
+                      <div className="font-medium text-sm truncate">
+                        {t.requestTitle ?? `WedFlexer ${t.otherUserId.slice(0, 8)}…`}
+                      </div>
+                      {t.last_message_at && (
+                        <div className="text-xs opacity-40 mt-0.5">
+                          {new Date(t.last_message_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </button>
+                  ))
+                )}
               </div>
 
-              {otherId ? (
-                <Chat
-                  otherUserId={otherId}
-                  requestId={requestId || undefined}
-                />
-              ) : (
-                <p className="text-sm opacity-70">
-                  Pick a conversation above to start messaging.
-                </p>
-              )}
-            </>
+              {/* Chat panel */}
+              <div className="min-h-[300px]">
+                {selected ? (
+                  <Chat
+                    otherUserId={selected.otherUserId}
+                    requestId={selected.request_id ?? undefined}
+                  />
+                ) : (
+                  <div className="border rounded-lg p-6 text-sm opacity-70 text-center">
+                    Select a conversation to start chatting.
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </section>
       </main>
