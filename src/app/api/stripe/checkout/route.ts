@@ -4,8 +4,6 @@ import { StripeCheckoutSchema, zodError } from "@/app/lib/validation";
 import { createUserClient, requireAuth, rateLimitKey, errStr } from "@/app/lib/api-helpers";
 import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 // platform fee in basis points, e.g. 800 = 8%
 const FEE_BPS = Number(process.env.PLATFORM_FEE_BPS ?? "800");
 
@@ -20,6 +18,7 @@ type ServiceReqRow = {
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     const json = await req.json();
     const parsed = StripeCheckoutSchema.safeParse(json);
 

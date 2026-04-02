@@ -2,18 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
 export async function POST(req: NextRequest) {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
     const raw = await req.text();
     const sig = req.headers.get("stripe-signature")!;
     const event = stripe.webhooks.constructEvent(raw, sig, endpointSecret);
 
-    const admin = createClient(url, service);
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
 
     if (event.type === "checkout.session.completed") {
       const cs = event.data.object as Stripe.Checkout.Session;

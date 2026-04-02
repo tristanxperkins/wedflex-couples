@@ -3,10 +3,9 @@ import Stripe from "stripe";
 import { createAdminClient, requireAuth, createUserClient, rateLimitKey, errStr } from "@/app/lib/api-helpers";
 import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function POST(req: NextRequest) {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
     // Authentication required - this triggers real money transfers
     const supabase = await createUserClient();
     const { user, response } = await requireAuth(supabase);
