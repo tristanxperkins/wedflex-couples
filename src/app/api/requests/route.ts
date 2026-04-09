@@ -36,6 +36,18 @@ export async function POST(req: NextRequest) {
     if (accepted_terms !== undefined) insert.accepted_terms = accepted_terms;
     if (inspiration_images !== undefined) insert.inspiration_images = inspiration_images;
 
+    // Ensure couple_profiles row exists before posting an offer
+    const { error: profileErr } = await supabase
+      .from("couple_profiles")
+      .upsert(
+        { id: user.id, email: user.email ?? null, updated_at: new Date().toISOString() },
+        { onConflict: "id" }
+      );
+
+    if (profileErr) {
+      return NextResponse.json({ ok: false, error: "Failed to create couple profile: " + profileErr.message }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from("service_requests")
       .insert(insert)

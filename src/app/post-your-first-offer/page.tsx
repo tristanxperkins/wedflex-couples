@@ -174,6 +174,12 @@ export default function PostFirstOfferPage() {
       const dollars = Number(offerAmount.replace(/[^0-9.]/g, ""));
       const offerCents = Math.round(dollars * 100);
 
+      // Ensure couple_profiles row exists before posting
+      await sb.from("couple_profiles").upsert(
+        { id: me.user.id, email: me.user.email ?? null, updated_at: new Date().toISOString() },
+        { onConflict: "id" }
+      );
+
       const { error } = await sb.from("service_requests").insert({
         title: title.trim(),
         category: category.trim(),
