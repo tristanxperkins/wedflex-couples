@@ -52,6 +52,7 @@ export default function MissionPage() {
             src="/images/Radical-concept.png"
             alt="Radical concept"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover object-top"
             priority
           />
@@ -116,6 +117,7 @@ export default function MissionPage() {
             src="/images/Set Up Tear Down Crew (3).png"
             alt="Real Wedding Celebration"
             fill
+            sizes="(max-width: 768px) 100vw, 80vw"
             className="object-cover"
             style={{objectPosition:"50 50%"}}//xy
           />
@@ -140,13 +142,13 @@ export default function MissionPage() {
 
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
-              href="https://wedflex-couples.vercel.app"
+              href="/post-your-first-offer"
               className="inline-flex items-center rounded-xl px-6 py-3 text-sm font-semibold bg-white text-brand-primary hover:bg-purple-50 shadow-md"
             >
               WedFlex Your Wedding →
             </Link>
             <Link
-              href="/earn-money"
+              href="https://wedflex-wedflexers-puce.vercel.app"
               className="inline-flex items-center rounded-xl px-6 py-3 text-sm font-semibold bg-white text-brand-primary hover:bg-purple-50 shadow-md"
             >
               Become a WedFlexer →
